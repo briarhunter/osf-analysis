@@ -20,7 +20,8 @@ attach(VA_data)
 
 #visualize the data. looking for normalcy. 
 hist(VA_data$mass_fall, main = "Fall Mass (g)")
-ggdensity(mass_fall, main = "normality test for Fall Mass", xlab = "mass (g)")
+ggdensity(mass_fall, main = "normality test for Fall Mass", xlab = "mass (g)") #looks bimodal
+ggdensity(mass_spr, main = "normality test for Spring Mass", xlab = "mass (g)") #looks fairly normal
 
 hist(VA_data$mass_fall[VA_data$treatment == "C"], main = "Fall Mass in treatment C")
 hist(VA_data$mass_fall[VA_data$treatment == "H"], main = "Fall Mass in treatment H")
