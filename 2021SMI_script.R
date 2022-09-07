@@ -41,6 +41,8 @@ prepo <-read.csv("prepost_SMI.csv", header = TRUE) #have now added calculated sv
 head(prepo)
 view(prepo)
 dim(prepo) #87 rows, 12 columns
+prepo$pop <- as.factor(prepo$pop)
+prepo$EB <- as.factor(prepo$EB)
 str(prepo)
 summary(prepo)
 
@@ -279,40 +281,6 @@ view(predSVL)
 
 
 ####calculate some SMI values - ref. Chen-Pan Liao R code inspired by Peig & Green (2009)
-set.seed(123)
-
-scaledMassIndex <- 
-  function(x, y, x.0 = mean(x)) {
-    require(smatr)
-    require(magrittr)
-    require(MASS)
-    require(data.table)
-    logM.ols <- lm(log(y) ~ log(x)) #OLS residuals 
-    logM.rob <- rlm(log(y) ~ log(x), method = "M") #robust scaled mass index
-    b.msa.ols <- coef(sma(log(y) ~ log(x)))[2] #bsma = scaling exponent - is this what b.msa is?
-    b.msa.rob <- coef(sma(log(y) ~ log(x), robust = T))[2] #SMA = standardised major axis regression
-    SMI.ols <- y * (x.0 / x) ^ b.msa.ols
-    SMI.rob <- y * (x.0 / x) ^ b.msa.rob
-    res <- data.frame(SMI.ols, SMI.rob, x, y) #output data frame of residuals
-    pred.DT <-
-      data.table(x = seq(min(x), max(x), length = 100)) %>% 
-      .[, y.ols := predict(logM.ols, newdata = .) %>% exp] %>% 
-      .[, y.rob := predict(logM.rob, newdata = .) %>% exp]
-    attr(res, "b.msa") <- c(ols = b.msa.ols, rob = b.msa.rob)
-    return(res)
-}
-
-SMI_pre20 <-
-  scaledMassIndex(prepo$length_pre20, prepo$mass_pre20, x.0 = 2)
-
-g1 <-
-  ggplot(prepo, aes(svl_pre20, mass_pre20)) +
-  geom_point() +
-  geom_line(aes(x, y, colour = Method),
-            data = attr(SMI_pre20, "pred") %>% melt(., "x", c("y.ols", "y.rob"), "Method", "y")) +
-  scale_colour_discrete(labels = c("OLS", "Robust (M-estimation)")
-  )
-
 
 #linear regressions of mass by length
 
@@ -328,4 +296,167 @@ ggplot(data = prepo, aes(svl_pre20, mass_pre20, colour = pop))+
 plot(mass_post21 ~ svl_post21, data = prepo, main = "mass by svl post-brumation 2021")
 plot(mass_pre_21 ~ svl_pre21, data = prepo, main = "mass by svl pre-brumation 2021")
 
+###########################
+#Use steph's code 
+###########################
 
+str(prepo)
+#subset prepo data frame by treatment
+prepo.GVZ <- subset(prepo, pop == "GVZ")
+str(prepo.GVZ)
+prepo.VA <- subset(prepo, pop == "VA")
+str(prepo.VA)
+
+### Mass (dependant) vs length (independent)
+############################ Pre-brumation (i.e. Nov) 2020
+plot(prepo$svl_pre20, prepo$mass_pre20, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("bottomright", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(mass_pre20 ~ svl_pre20, data = prepo), col = "black")
+lm(mass_pre20 ~ svl_pre20, data = prepo)
+summary(lm(mass_pre20 ~ svl_pre20, data = prepo))
+abline(lm(mass_pre20 ~ svl_pre20, data = prepo.GVZ), col = "blue")
+summary(lm(mass_pre20 ~ svl_pre20, data = prepo.GVZ))
+abline(lm(mass_pre20 ~ svl_pre20, data = prepo.VA), col = "green")
+summary(lm(mass_pre20 ~ svl_pre20, data = prepo.VA))
+legend("topleft", title = "Regression lines", c("n=87, Adjusted R-squared: 0.8325, p-value: 2.2e-16",
+                                                "n=42, Adjusted R-squared: 0.6823, p-value: 9.996e-12",
+                                                "n=45, Adjusted R-squared: 0.8839, p-value: 2.2e-16"),
+       fill = c('black', 'blue', 'green'), cex = 0.8)
+title("Pre-brumation (Nov) 2020")
+
+#Log-transformation
+prepo$log.svl_pre20 = log(prepo$svl_pre20)
+prepo$log.mass_pre20 = log(prepo$mass_pre20)
+prepo.GVZ$log.svl_pre20 = log(prepo.GVZ$svl_pre20)
+prepo.VA$log.svl_pre20 = log(prepo.VA$svl_pre20)
+prepo.GVZ$log.mass_pre20 = log(prepo.GVZ$mass_pre20)
+prepo.VA$log.mass_pre20 = log(prepo.VA$mass_pre20)
+
+### Log Mass vs Log Length for 
+############################ Pre-brumation (i.e. Nov) 2020
+plot(prepo$log.svl_pre20, prepo$log.mass_pre20, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass")
+legend("topleft", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo), col = "black")
+lm(log.mass_pre20 ~ log.svl_pre20, data = prepo)
+summary(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo))
+abline(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo.GVZ), col = "blue")
+summary(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo.GVZ))
+abline(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo.VA), col = "green")
+summary(lm(log.mass_pre20 ~ log.svl_pre20, data = prepo.VA))
+legend("bottomright", title = "Regression lines", c("n=87, Adjusted R-squared: 0.9227, p-value: 2.2e-16",
+                                                "n=42, Adjusted R-squared: 0.6915, p-value: 5.527e-12",
+                                                "n=45, Adjusted R-squared: 0.9515, p-value: 2.2e-16"),
+       fill = c('black', 'blue', 'green'), cex = 0.8)
+title("Pre-brumation (Nov) 2020")
+
+### Mass (dependant) vs length (independent)
+############################ Post-brumation (i.e. Mar) 2021
+plot(prepo$svl_post21, prepo$mass_post21, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("bottomright", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(mass_post21 ~ svl_post21, data = prepo), col = "black")
+lm(mass_post21 ~ svl_post21, data = prepo)
+summary(lm(mass_post21 ~ svl_post21, data = prepo))
+abline(lm(mass_post21 ~ svl_post21, data = prepo.GVZ), col = "blue")
+summary(lm(mass_post21 ~ svl_post21, data = prepo.GVZ))
+abline(lm(mass_post21 ~ svl_post21, data = prepo.VA), col = "green")
+summary(lm(mass_post21 ~ svl_post21, data = prepo.VA))
+legend("topright", title = "Regression lines", c("n=55, Adjusted R-squared: 0.04873, p-value: 0.0576",
+                                                "n=40, Adjusted R-squared: -0.02128, p-value: 0.6675",
+                                                "n=15, Adjusted R-squared: 0.7145, p-value: 4.422e-05"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("Post-brumation (Mar) 2021")
+
+#Log-transformation
+prepo$log.svl_post21 = log(prepo$svl_post21)
+prepo$log.mass_post21 = log(prepo$mass_post21)
+prepo.GVZ$log.svl_post21 = log(prepo.GVZ$svl_post21)
+prepo.VA$log.svl_post21 = log(prepo.VA$svl_post21)
+prepo.GVZ$log.mass_post21 = log(prepo.GVZ$mass_post21)
+prepo.VA$log.mass_post21 = log(prepo.VA$mass_post21)
+
+### Log Mass vs Log Length for 
+############################ Post-brumation (i.e. Mar) 2021
+plot(prepo$log.svl_post21, prepo$log.mass_post21, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass")
+legend("bottomright", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(log.mass_post21 ~ log.svl_post21, data = prepo), col = "black")
+lm(log.mass_post21 ~ log.svl_post21, data = prepo)
+summary(lm(log.mass_post21 ~ log.svl_post21, data = prepo))
+abline(lm(log.mass_post21 ~ log.svl_post21, data = prepo.GVZ), col = "blue")
+summary(lm(log.mass_post21 ~ log.svl_post21, data = prepo.GVZ))
+abline(lm(log.mass_post21 ~ log.svl_post21, data = prepo.VA), col = "green")
+summary(lm(log.mass_post21 ~ log.svl_post21, data = prepo.VA))
+legend("topright", title = "Regression lines", c("n=55, Adjusted R-squared: 0.08053, p-value: 0.02025",
+                                                    "n=40, Adjusted R-squared: -0.02392, p-value: 0.7672",
+                                                    "n=15, Adjusted R-squared: 0.7341, p-value: 2.761e-05"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("Post-brumation (Mar) 2021")
+
+
+# Mass (dependant) vs length (independent)
+############################ Pre-brumation (i.e. Nov) 2021
+plot(prepo$svl_pre21, prepo$mass_pre_21, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("topleft", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(mass_pre_21 ~ svl_pre21, data = prepo), col = "black")
+lm(mass_pre_21 ~ svl_pre21, data = prepo)
+summary(lm(mass_pre_21 ~ svl_pre21, data = prepo))
+abline(lm(mass_pre_21 ~ svl_pre21, data = prepo.GVZ), col = "blue")
+summary(lm(mass_pre_21 ~ svl_pre21, data = prepo.GVZ))
+abline(lm(mass_pre_21 ~ svl_pre21, data = prepo.VA), col = "green")
+summary(lm(mass_pre_21 ~ svl_pre21, data = prepo.VA))
+legend("bottomright", title = "Regression lines", c("n=75, Adjusted R-squared: 0.3753, p-value: 3.116e-09",
+                                                "n=40, Adjusted R-squared: 0.0288, p-value: 0.1502",
+                                                "n=35, Adjusted R-squared: 0.6113, p-value: 1.78e-08"),
+       fill = c('black', 'blue', 'green'), cex = 0.7)
+title("Pre-brumation (Nov) 2021")
+
+#Log-transformation
+prepo$log.svl_pre21 = log(prepo$svl_pre21)
+prepo$log.mass_pre_21 = log(prepo$mass_pre_21)
+prepo.GVZ$log.svl_pre21 = log(prepo.GVZ$svl_pre21)
+prepo.VA$log.svl_pre21 = log(prepo.VA$svl_pre21)
+prepo.GVZ$log.mass_pre_21 = log(prepo.GVZ$mass_pre_21)
+prepo.VA$log.mass_pre_21 = log(prepo.VA$mass_pre_21)
+
+# Log Mass vs Log Length for 
+############################ Pre-brumation (i.e. Nov) 2021
+plot(prepo$log.svl_pre21, prepo$log.mass_pre_21, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(prepo$pop)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass")
+legend("topleft", title = "Population", c("GVZoo", "VanAqua"), fill = c('blue', 'green'), cex = 0.8)
+abline(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo), col = "black")
+lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo)
+summary(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo))
+abline(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo.GVZ), col = "blue")
+summary(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo.GVZ))
+abline(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo.VA), col = "green")
+summary(lm(log.mass_pre_21 ~ log.svl_pre21, data = prepo.VA))
+legend("bottomright", title = "Regression lines", c("n=75, Adjusted R-squared: 0.4983, p-value: 9.185e-13",
+                                                    "n=40, Adjusted R-squared: 0.02358, p-value: 1716",
+                                                    "n=35, Adjusted R-squared: 0.7226, p-value: 6.32e-11"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("Pre-brumation (Nov) 2021")
+
+################################################################################
+# Calculate scaled mass index (SMI)
+################################################################################
+
+# Scaled mass index, Pieg & Green 2009
+
+# Scaled mass index (SMI): ^Mi = Mi (Lo/Li)^bsma
+# where: ^Mi is scaled mass: predicted body mass for individual i when the linear body measure is standardized to L0.
+#         Mi is mass of individual i
+#         Lo is an arbitraty value of length (e.g. arithmetric mean of L for the population of study)
+#         Li is the linear body measurement of individual i
+#         bsma is the scaling exponent: calculated indirectly by dividing the slope from an OLS regression (bOLS) by the Pearson’s correlation coefficient r (LaBarbera 1989), or directly using online software (Bohonak and van der Linde 2004).
+
+# calculate bsma manually (described in Pieg & Green 2009 p.1886)
