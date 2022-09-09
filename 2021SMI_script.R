@@ -16,9 +16,12 @@ theme_set(theme_bw())
 SMI_zoos <- read.csv("2021SMI.csv", header = TRUE)
 head(SMI_zoos)
 view(SMI_zoos)
-dim(SMI_zoos) #110 rows, 8 columns
+dim(SMI_zoos) #110 rows, 9 columns
 str(SMI_zoos) #set EB as factor ##set birth_yr as date/numeric?
 SMI_zoos$EB <- as.factor(SMI_zoos$EB) #as factor. Two levels: 0=EB 1=not (OK)
+SMI_zoos$pop <- as.factor(SMI_zoos$pop) #factor with 6 levels
+SMI_zoos$locale <- as.factor(SMI_zoos$locale) #factor with 2 levels (Wild, Zoo)
+SMI_zoos$age_yrs <- as.factor(SMI_zoos$age_yrs) #factor with 7 levels (1, 2, 3, 4, 6, 11, 12)
 #yr_birth <- as.Date(SMI_zoos$birth_yr, format = "%Y") # make new column or set birth_yr as numeric?
 summary(SMI_zoos)
 
@@ -49,6 +52,7 @@ view(prepo)
 dim(prepo) #87 rows, 12 columns
 prepo$pop <- as.factor(prepo$pop)
 prepo$EB <- as.factor(prepo$EB)
+prepo$birth_yr <- as.factor(prepo$birth_yr) #9 levels
 str(prepo)
 summary(prepo)
 
@@ -83,7 +87,7 @@ ggqqplot(prepo$svl_post21, na.rm = TRUE)
 ggqqplot(prepo$mass_pre_21, main = "qq-plot mass pre-brum 2021", na.rm = TRUE)
 ggqqplot(prepo$svl_pre21, na.rm = TRUE) #these actually all look close to normal if not normal
 
-plot(SVL ~ mass, data = SMI_zoos, main = "SVL by mass")
+plot(mass ~ SVL, data = SMI_zoos, main = "mass by SVL")
 plot(svl_pre20 ~ mass_pre20, data = prepo, main = "svl by mass pre-brumation 2020")
 plot(svl_post21 ~ mass_post21, data = prepo, main = "svl by mass post-brumation 2021")
 plot(svl_pre21 ~ mass_pre_21, data = prepo, main = "svl by mass pre-brumation 2021")
@@ -579,6 +583,8 @@ prepo$SMIpre21 <- ScaledMassIndex(prepo$svl_pre21, prepo$mass_pre_21)
 view(prepo)
 
 #plot SMI
+######################################################
+#GRAPHING#############################################
 plot(wild_SMI$pop, wild_SMI$SMI, xlab = "Population", ylab = "Scaled Mass Index (g)", 
      main = "Scaled Mass Index for wild frog populations",
      col = (c("blue", "green", "purple", "orange", "red")))
@@ -635,13 +641,75 @@ ggplot(data = prepo, aes(x = pop, y = SMIpre21, fill=factor(pop, labels = c("GVZ
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
 
+#subset for age
+prepo_age <- subset(prepo, !is.na(birth_yr))
+ggplot(data = prepo_age, aes(x = birth_yr, y = SMIpre21, fill=factor(pop, labels = c("GVZ", "VA"))))+
+  geom_boxplot(show.legend = TRUE)+
+  labs(x = "Birth Year", y = "Scaled Mass Index (g)", title = "SMI in zoos pre-brumation 2021")+
+  theme_classic()+
+  scale_fill_manual(values = c("blue", "green"))+
+  scale_fill_discrete(name = "Zoo")+
+  theme(legend.position = "top")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
 
+  ggplot(data = prepo_age, aes(x = birth_yr, y = SMIpre20, fill=factor(pop, labels = c("GVZ", "VA"))))+
+    geom_boxplot(show.legend = TRUE)+
+    labs(x = "Birth Year", y = "Scaled Mass Index (g)", title = "SMI in zoos pre-brumation 2020")+
+    theme_classic()+
+    scale_fill_manual(values = c("blue", "green"))+
+    scale_fill_discrete(name = "Zoo")+
+    theme(legend.position = "top")+
+    theme(text = element_text(family = "Arial"))+
+    theme(text = element_text(size = 12))
+
+  
+##show by status and facet.by pop
+ggboxplot(prepo, x = "EB", y = "SMIpre20", facet.by = "pop")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status in fall 2020")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
+
+ggboxplot(prepo, x = "EB", y = "SMIpo21", facet.by = "pop")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status in spring 2021")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
+
+ggboxplot(prepo, x = "EB", y = "SMIpre21", facet.by = "pop")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status in fall 2021")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
 
 
 ###############change data frame to stacked - columns for season (pre-brumate, post-brumate), WC (Wild or Captive)
 ###will then be able to compare all on same graph using facet.by()
+# ggboxplot(wild_SMI, x = "season", y = "SMI", facet.by = "population")
 
-#according to Stevens 2013 (Intermediate Statistics: A Modern Approach), normality is not required for cases of large data sets (n>30)
+
+#####mean SMI per population
+mean(wild_SMI$SMI, na.rm = TRUE) #43.5887
+#subset wild populations
+wildCH_SMI <- subset(wild_SMI, pop == "CH")
+str(wildCH_SMI) #n=7
+wildMS_SMI <- subset(wild_SMI, pop == "MS")
+wildMT_SMI <- subset(wild_SMI, pop == "MT")
+wildMV_SMI <- subset(wild_SMI, pop == "MV")
+wildST_SMI <- subset(wild_SMI, pop == "ST")
+#means for wild pops 
+mean(wildCH_SMI$SMI, na.rm = TRUE) #40.19464
+mean(wildMS_SMI$SMI, na.rm = TRUE) #42.23196
+mean(wildMT_SMI$SMI, na.rm = TRUE) #51.71032
+mean(wildMV_SMI$SMI, na.rm = TRUE) #44.23784
+mean(wildST_SMI$SMI, na.rm = TRUE) #46.19538
+#subset zoo pops
+prepo.GVZ <- subset(prepo, pop == "GVZ")
+prepo.VA <- subset(prepo, pop == "VA")
+#means for zoo pops per season
+mean(prepo.GVZ$SMIpre20, na.rm = TRUE) #53.72223
+mean(prepo.VA$SMIpre20, na.rm = TRUE) #53.45626
+mean(prepo.GVZ$SMIpo21, na.rm = TRUE) #41.82268
+mean(prepo.VA$SMIpo21, na.rm = TRUE) #84.62755
+mean(prepo.GVZ$SMIpre21, na.rm = TRUE) #53.54254
+mean(prepo.VA$SMIpre21, na.rm = TRUE) #57.34223
+
+#according to Stevens 2013 (Intermediate Statistics: A Modern Approach), normality is not required (for ANOVA) for cases of large data sets (n>30)
 #Kruskal-Wallis is an alternative option, compares medians of pops instead of means- does not require normality or homoscedasticity
 
 #do a Levene test first before ANOVA to check for homoscedasticity (equality of variance) leveneTest()
@@ -659,3 +727,214 @@ boxplot(svl_pre21 ~ pop, prepo)
 
 #####above boxplots etc may not be necessary. Really just comparin bsma of GVZ and VA first to see if significantly different
 
+
+########################################################
+# Calculate SMI for full 2021 snapshot of zoos and wild
+# use SMI equation from above
+########################################################
+# Regressions first
+
+str(SMI_zoos)
+#subset SMI_zoos data frame by populations: CH, GVZ, MS, MV, TZ, VA
+SMI_zoos.CH <- subset(SMI_zoos, pop == "CH")
+str(SMI_zoos.CH) #n=7
+SMI_zoos.GVZ <- subset(SMI_zoos, pop == "GVZ")
+str(SMI_zoos.GVZ) #n=41
+SMI_zoos.MS <- subset(SMI_zoos, pop == "MS")
+str(SMI_zoos.MS) #n=25
+SMI_zoos.MV <- subset(SMI_zoos, pop == "MV")
+str(SMI_zoos.MV) #n=13
+SMI_zoos.TZ <- subset(SMI_zoos, pop == "TZ")
+str(SMI_zoos.TZ) #n=9
+SMI_zoos.VA <- subset(SMI_zoos, pop == "VA")
+str(SMI_zoos.VA) #n=15
+#subset by locale (zoos vs wild)
+SMI_zoos.z <- subset(SMI_zoos, locale == "Zoo")
+str(SMI_zoos.z) #n=65
+SMI_zoos.w <- subset(SMI_zoos, locale == "Wild")
+str(SMI_zoos.w) #n=45
+
+
+### Mass (dependant) vs length (independent)
+############################ 
+plot(SMI_zoos$SVL, SMI_zoos$mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'purple', 'green', 'orange', 'yellow', 'red')[as.numeric(SMI_zoos$pop)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("bottomright", title = "Population", c("Chaplin", "GVZoo", "Maria Slough", "Morris Valley", "TZoo", "VanAqua"), 
+       fill = c('blue', 'purple', 'green', 'orange', 'yellow', 'red'), cex = 0.6)
+abline(lm(mass ~ SVL, data = SMI_zoos), col = "black")
+lm(mass ~ SVL, data = SMI_zoos)
+summary(lm(mass ~ SVL, data = SMI_zoos))
+abline(lm(mass ~ SVL, data = SMI_zoos.CH), col = "blue")
+summary(lm(mass ~ SVL, data = SMI_zoos.CH))
+abline(lm(mass ~ SVL, data = SMI_zoos.GVZ), col = "purple")
+summary(lm(mass ~ SVL, data = SMI_zoos.GVZ))
+abline(lm(mass ~ SVL, data = SMI_zoos.MS), col = "green")
+summary(lm(mass ~ SVL, data = SMI_zoos.MS))
+abline(lm(mass ~ SVL, data = SMI_zoos.MV), col = "orange")
+summary(lm(mass ~ SVL, data = SMI_zoos.MV))
+abline(lm(mass ~ SVL, data = SMI_zoos.TZ), col = "yellow")
+summary(lm(mass ~ SVL, data = SMI_zoos.TZ))
+abline(lm(mass ~ SVL, data = SMI_zoos.VA), col = "red")
+summary(lm(mass ~ SVL, data = SMI_zoos.VA))
+legend("topleft", title = "Regression lines", c("n=7, Adjusted R-squared: 0.5825, p-value: 0.02806",
+                                                "n=41, Adjusted R-squared: 0.252, p-value: 0.000489",
+                                                "n=25, Adjusted R-squared: 0.6651, p-value: 4.14e-07",
+                                                "n=13, Adjusted R-squared: 0.6776, p-value: 0.0003331",
+                                                "n=9, Adjusted R-squared: 0.4312, p-value: 0.03256",
+                                                "n=15, Adjusted R-squared: 0.7145, p-value: 4.422e-05"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("2021 spring Mass by SVL")
+
+#Log-transformation
+SMI_zoos$log.SVL = log(SMI_zoos$SVL)
+SMI_zoos$log.mass = log(SMI_zoos$mass)
+SMI_zoos.CH$log.SVL = log(SMI_zoos.CH$SVL)
+SMI_zoos.CH$log.mass = log(SMI_zoos.CH$mass)
+SMI_zoos.GVZ$log.SVL = log(SMI_zoos.GVZ$SVL)
+SMI_zoos.GVZ$log.mass = log(SMI_zoos.GVZ$mass)
+SMI_zoos.MS$log.SVL = log(SMI_zoos.MS$SVL)
+SMI_zoos.MS$log.mass = log(SMI_zoos.MS$mass)
+SMI_zoos.MV$log.SVL = log(SMI_zoos.MV$SVL)
+SMI_zoos.MV$log.mass = log(SMI_zoos.MV$mass)
+SMI_zoos.TZ$log.SVL = log(SMI_zoos.TZ$SVL)
+SMI_zoos.TZ$log.mass = log(SMI_zoos.TZ$mass)
+SMI_zoos.VA$log.SVL = log(SMI_zoos.VA$SVL)
+SMI_zoos.VA$log.mass = log(SMI_zoos.VA$mass)
+
+# Log Mass vs Log Length
+############################ 
+plot(SMI_zoos$log.SVL, SMI_zoos$log.mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'purple', 'green', 'orange', 'yellow', 'red')[as.numeric(SMI_zoos$pop)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass (g)")
+legend("bottomright", title = "Population", c("Chaplin", "GVZoo", "Maria Slough", "Morris Valley", "TZoo", "VanAqua"), 
+       fill = c('blue', 'purple', 'green', 'orange', 'yellow', 'red'), cex = 0.6)
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos), col = "black")
+lm(log.mass ~ log.SVL, data = SMI_zoos)
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.CH), col = "blue")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.CH))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.GVZ), col = "purple")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.GVZ))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.MS), col = "green")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.MS))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.MV), col = "orange")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.MV))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.TZ), col = "yellow")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.TZ))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.VA), col = "red")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.VA))
+legend("topleft", title = "Regression lines", c("n=7, Adjusted R-squared: 0.5935, p-value: 0.02613",
+                                                "n=41, Adjusted R-squared: 0.2388, p-value: 0.0007024",
+                                                "n=25, Adjusted R-squared: 0.6846, p-value: 2.048e-07",
+                                                "n=13, Adjusted R-squared: 0.6446, p-value: 0.0005799",
+                                                "n=9, Adjusted R-squared: 0.4231, p-value: 0.03438",
+                                                "n=15, Adjusted R-squared: 0.7345, p-value: 2.73e-05"),
+       fill = c('blue', 'purple', 'green', 'orange', 'yellow', 'red'), cex = 0.5)
+title("Log of MbyL spring 2021")
+
+#########Try Log Mass by SVL divided by Zoo vs Wild (rather than pop) #####################
+#log transformation
+SMI_zoos.w$log.SVL = log(SMI_zoos.w$SVL)
+SMI_zoos.w$log.mass = log(SMI_zoos.w$mass)
+SMI_zoos.z$log.SVL = log(SMI_zoos.z$SVL)
+SMI_zoos.z$log.mass = log(SMI_zoos.z$mass)
+
+plot(SMI_zoos$log.SVL, SMI_zoos$log.mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'purple')[as.numeric(SMI_zoos$locale)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass (g)")
+legend("bottomright", title = "Current Location", c("Wild", "Zoo"), 
+       fill = c('blue', 'purple'), cex = 0.7)
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos), col = "black")
+lm(log.mass ~ log.SVL, data = SMI_zoos)
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.w), col = "blue")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.w))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.z), col = "purple")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.z))
+legend("topleft", title = "Regression lines", c("n=45, Adjusted R-squared: 0.5984, p-value: 2.823e-10",
+                                                "n=65, Adjusted R-squared: 0.3304, p-value: 3.307e-07"),
+       fill = c('blue', 'purple'), cex = 0.6)
+title("Log of MbyL spring 2021")
+
+### Log of wild and 3 zoos #####################
+plot(SMI_zoos$log.SVL, SMI_zoos$log.mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'purple', 'blue', 'blue', 'yellow', 'red')[as.numeric(SMI_zoos$pop)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass (g)")
+legend("bottomright", title = "Population", c("Wild", "GVZoo", "TZoo", "VanAqua"), 
+       fill = c('blue', 'purple', 'yellow', 'red'), cex = 0.7)
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos), col = "black")
+lm(log.mass ~ log.SVL, data = SMI_zoos)
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.w), col = "blue")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.w))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.GVZ), col = "purple")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.GVZ))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.TZ), col = "yellow")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.TZ))
+abline(lm(log.mass ~ log.SVL, data = SMI_zoos.VA), col = "red")
+summary(lm(log.mass ~ log.SVL, data = SMI_zoos.VA))
+legend("topleft", title = "Regression lines", c("n=45, Adjusted R-squared: 0.5984, p-value: 2.823e-10",
+                                                "n=41, Adjusted R-squared: 0.2388, p-value: 0.0007024",
+                                                "n=9, Adjusted R-squared: 0.4231, p-value: 0.03438",
+                                                "n=15, Adjusted R-squared: 0.7345, p-value: 2.73e-05"),
+       fill = c('blue', 'purple', 'yellow', 'red'), cex = 0.6)
+title("Log of MbyL spring 2021")
+
+###########################################################
+### Calculate SMI for 2021 data using Lo and bsma defined previously (from full wild dataset)
+###########################################################
+
+SMI_zoos$SMI <- ScaledMassIndex(SMI_zoos$SVL, SMI_zoos$mass)
+view(SMI_zoos)
+
+#plot SMI
+plot(SMI_zoos$pop, SMI_zoos$SMI, xlab = "Population", ylab = "Scaled Mass Index (g)", 
+     main = "Scaled Mass Index in spring 2021",
+     col = (c("blue", "purple", "green", "orange", "yellow", "red")))
+
+#nicer plots
+ggplot(data = SMI_zoos, aes(x = pop, y = SMI, fill=factor(pop, labels = c("Chaplin", "GVZoo", "Maria Slough",
+                                                                          "Morris Valley", "TZoo", "VanAqua"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in spring 2021")+
+  theme_classic()+
+  scale_fill_manual(values = c("blue", "purple", "green", "orange", "yellow", "red"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("CH" = "Chaplin", "GVZ" = "GVZoo", "MS" = "Maria Slough",
+                            "MV" = "Morris Valley", "TZ" = "TZoo", "VA" = "VanAqua"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 11))
+
+#wild vs zoos 
+#create new column to group three wild populations together but separate from zoos
+SMI_zoos <- SMI_zoos %>% 
+  mutate(population = case_when(pop == "CH" ~ "wild",
+                                pop == "MS" ~ "wild",
+                                pop == "MV" ~ "wild",
+                                pop == "GVZ" ~ "GVZ",
+                                pop == "VA" ~ "VA",
+                                pop == "TZ" ~ "TZ")) %>% 
+  relocate(population, .after = 3)
+SMI_zoos$population <- as.factor(SMI_zoos$population) #4 levels, GVZ TZ VA wild
+view(SMI_zoos)
+
+ggplot(data = SMI_zoos, aes(x = population, y = SMI, fill=factor(population, labels = c("GVZoo", 
+                                                                                 "TZoo", "VanAqua", "Wild"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in spring 2021")+
+  theme_classic()+
+  scale_fill_manual(values = c("purple", "yellow", "red", "blue"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("wild" = "Wild", "GVZ" = "GVZoo", "TZ" = "TZoo", "VA" = "VanAqua"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 13))
+
+ggboxplot(SMI_zoos, x = "EB", y = "SMI", facet.by = "population")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "2021 SMI in egg bound vs OK OSF")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "other females"))+
+  theme(text = element_text(family = "Arial"))
+
+###########################################################
+## VA SMI data organized by age
+###########################################################
