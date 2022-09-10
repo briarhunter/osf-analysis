@@ -938,3 +938,404 @@ ggboxplot(SMI_zoos, x = "EB", y = "SMI", facet.by = "population")+
 ###########################################################
 ## VA SMI data organized by age
 ###########################################################
+VA_byage_wide <- read.csv("VA_SMI_byage.csv", header = TRUE)
+#transform from wide to long 
+VA_age <- melt(setDT(VA_byage_wide), id=1:8, measure=patterns("^mass", "^sul"),
+     value.name=c("mass", "sul"), variable.name="ageof", na.rm = TRUE)
+
+VA_age <- VA_age %>% 
+  mutate(age = case_when(ageof == "1" ~ "0", ageof == "2" ~ "1", ageof == "3" ~ "2", ageof == "4" ~ "3",
+                        ageof == "5" ~ "4", ageof == "6" ~ "5", ageof == "7" ~ "6", ageof == "8" ~ "7",
+                        ageof == "9" ~ "8", ageof == "10" ~ "9", ageof == "11" ~ "10")) %>%
+           relocate(age, .after = EB) #need to make way cleaner way of doing this. set eqn instead of each value
+VA_age$ageof <- NULL #drop ageof column now that we have proper age
+view(VA_age)
+VA_age$frog_id <- as.factor(VA_age$frog_id) #factor 144 levels (individual frogs)
+VA_age$EB <- as.factor(VA_age$EB) #as factor. Two levels: 0=EB 1=not (OK)
+VA_age$pop <- as.factor(VA_age$pop) #factor with 1 level (all from VA)
+VA_age$source <- as.factor(VA_age$source) #factor with 13 levels
+VA_age$birth_yr <- as.factor(VA_age$birth_yr) #13 levels
+VA_age$age <- as.factor(VA_age$age) #11 levels
+str(VA_age)
+dim(VA_age) #444 rows, 11 columns
+summary(VA_age)
+
+#convert sul values into SVL using previous regression equation
+#SVL = 0.889x + 5.1677, R2 = 0.4573
+SULconvert <- #set function for SUL to SVL conversion
+  function(x) {
+    0.889 * x + 5.1677
+  }
+
+VA_age$svl <- SULconvert(VA_age$sul) #new column of converted svl values
+
+#visualize distribution
+hist(VA_age$mass, main = "VA mass")
+hist(VA_age$svl, main = "VA svl")
+ggdensity(VA_age$mass, main = "VA mass", xlab = "mass (g)")
+ggdensity(VA_age$svl, main = "VA svl", xlab = "snout-vent length (mm)")
+ggqqplot(VA_age$mass, na.rm = TRUE)
+ggqqplot(VA_age$svl, na.rm = TRUE)
+#calculate normality by shapiro (H0 = normal)
+shapiro.test(VA_age$mass) #significant = not normal
+shapiro.test(VA_age$svl) #significant = not normal
+######neither are normal but have large sample size (n=444 total observations)
+######samples are not independent because we have multiple measurements per individual frog
+
+#bootstrap confidence intervals
+VA.m_boot <- boot(VA_age$mass, my_mean, 1000) #bootstrap the mean for age
+VA.m_boot 
+plot(VA.m_boot)
+boot.ci(boot_out <- VA.m_boot, #confidence intervals for mass
+        type = c("norm", "basic", "perc", "bca"))
+VA.l_boot <- boot(VA_age$svl, my_mean, 1000) #bootstrap the mean for age
+VA.l_boot 
+plot(VA.l_boot)
+boot.ci(boot_out <- VA.l_boot, #confidence intervals for mass
+        type = c("norm", "basic", "perc", "bca"))
+
+#####subset data for adults (>2 years old)
+#SMI should standardize for age but want to look at normality of data as is
+VA_adults <- VA_age %>% 
+  filter(age != 0 & age != 1) #exclude frogs at 0 and 1 yrs
+view(VA_adults)
+str(VA_adults) #n=263, still have all 144 individual frogs though
+
+VA_adults2 <- VA_adults %>% #exclude 0-2 years old. technically "maturity" is reached after 2yrs
+  filter(age != 2)
+view(VA_adults2)
+str(VA_adults2) #n=168 obs, still 144 frogs
+
+#view their distribution
+hist(VA_adults$mass)
+hist(VA_adults$svl)
+hist(VA_adults2$mass)
+hist(VA_adults2$svl) #these all look considerably more normal
+
+### Mass (dependant) vs length (independent)
+############################ VA full dataset
+#subset by status (EB or OK)
+VA_EB <- subset(VA_age, EB == "0")
+str(VA_EB) #n=158
+VA_OK <- subset(VA_age, EB == "1")
+str(VA_OK) #n=276
+
+plot(VA_age$svl, VA_age$mass, pch = 16, cex = 1.3,
+     col = (c('red', 'blue')[as.numeric(VA_age$EB)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("bottomright", title = "status", c("Egg bound", "Other"), fill = c('red', 'blue'), cex = 0.8)
+abline(lm(mass ~ svl, data = VA_age), col = "black")
+lm(mass ~ svl, data = VA_age)
+summary(lm(mass ~ svl, data = VA_age))
+abline(lm(mass ~ svl, data = VA_EB), col = "red")
+summary(lm(mass ~ svl, data = VA_EB))
+abline(lm(mass ~ svl, data = VA_OK), col = "blue")
+summary(lm(mass ~ svl, data = VA_OK))
+legend("topleft", title = "Regression lines", c("n=434, Adjusted R-squared: 0.7607, p-value: 2.2e-16", 
+                                                "n=158, Adjusted R-squared: 0.7774, p-value: 2.2e-16",
+                                                "n=276, Adjusted R-squared: 0.7577, p-value: 2.2e-16"),
+       fill = c('black', 'red', 'blue'), cex = 0.65)
+title("MbyL for full VA dataset")
+
+#Log-transformation
+VA_age$log.svl = log(VA_age$svl)
+VA_age$log.mass = log(VA_age$mass)
+VA_EB$log.svl = log(VA_EB$svl)
+VA_OK$log.svl = log(VA_OK$svl)
+VA_EB$log.mass = log(VA_EB$mass)
+VA_OK$log.mass = log(VA_OK$mass)
+
+### Log Mass vs Log Length for 
+############################ Pre-brumation (i.e. Nov) 2020
+plot(VA_age$log.svl, VA_age$log.mass, pch = 16, cex = 1.3,
+     col = (c('red', 'blue')[as.numeric(VA_age$EB)]),
+     xlab = "Log transformed snout-vent length", ylab = "Log transformed mass")
+legend("topleft", title = "Status", c("Egg bound", "Other"), fill = c('red', 'blue'), cex = 0.8)
+abline(lm(log.mass ~ log.svl, data = VA_age), col = "black")
+lm(log.mass ~ log.svl, data = VA_age)
+summary(lm(log.mass ~ log.svl, data = VA_age))
+abline(lm(log.mass ~ log.svl, data = VA_EB), col = "red")
+summary(lm(log.mass ~ log.svl, data = VA_EB))
+abline(lm(log.mass ~ log.svl, data = VA_OK), col = "blue")
+summary(lm(log.mass ~ log.svl, data = VA_OK))
+legend("bottomright", title = "Regression lines", c("n=434, Adjusted R-squared: 0.908, p-value: 2.2e-16",
+                                                    "n=158, Adjusted R-squared: 0.9285, p-value: 2.2e-16",
+                                                    "n=276, Adjusted R-squared: 0.898, p-value: 2.2e-16"),
+       fill = c('black', 'red', 'blue'), cex = 0.7)
+title("Log of MbyL for VA dataset")
+
+##############################adults vs young
+#already have VA_adults2 for >2 year old frogs
+str(VA_adults2) #n=168
+VA_0 <- subset(VA_age, age == "0")
+str(VA_0) #n=75
+VA_1 <- subset(VA_age, age == "1")
+str(VA_1) #n=106
+VA_2 <- subset(VA_age, age == "2")
+str(VA_2) #n=95
+
+VA_age <- VA_age %>% 
+  mutate(maturity = case_when(age > 2 ~ "adult",
+                              age == 0  ~ "0",
+                              age == 1 ~ "1",
+                              age == 2 ~ "2")) %>% 
+  relocate(maturity, .after = age)
+VA_age$maturity <- as.factor(VA_age$maturity)
+str(VA_age) #4 levels: 0, 1, 2, adult (>2 yrs old)
+
+plot(VA_age$svl, VA_age$mass, pch = 16, cex = 1.3,
+     col = (c('orange', 'green', 'purple', 'blue')[as.numeric(VA_age$maturity)]),
+     xlab = "snout-vent length (mm)", ylab = "mass (g)")
+legend("bottomright", title = "Age", c("0yo", "1yo", "2yo", "adult (>2yo)"), 
+       fill = c('orange', 'green', 'purple', 'blue'), cex = 0.7)
+abline(lm(mass ~ svl, data = VA_age), col = "black")
+lm(mass ~ svl, data = VA_age)
+summary(lm(mass ~ svl, data = VA_age))
+abline(lm(mass ~ svl, data = VA_0), col = "orange")
+summary(lm(mass ~ svl, data = VA_0))
+abline(lm(mass ~ svl, data = VA_1), col = "green")
+summary(lm(mass ~ svl, data = VA_1))
+abline(lm(mass ~ svl, data = VA_2), col = "purple")
+summary(lm(mass ~ svl, data = VA_2))
+abline(lm(mass ~ svl, data = VA_adults2), col = "blue")
+summary(lm(mass ~ svl, data = VA_adults2))
+legend("topleft", title = "Regression lines", c("n=444, Adjusted R-squared: 0.7607, p-value: 2.2e-16", 
+                                                "n=168, Adjusted R-squared: 0.7582, p-value: 2.2e-16",
+                                                "n=75, Adjusted R-squared: 0.7657, p-value: 2.2e-16",
+                                                "n=106, Adjusted R-squared: 0.7274, p-value: 2.2e-16",
+                                                "n=95, Adjusted R-squared: 0.3358, p-value: 2.2e-16"),
+       fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
+title("MbyL by age at VA")
+
+#######Log transformation
+VA_0$log.svl = log(VA_0$svl)
+VA_0$log.mass = log(VA_0$mass)
+VA_1$log.svl = log(VA_1$svl)
+VA_1$log.mass = log(VA_1$mass)
+VA_2$log.svl = log(VA_2$svl)
+VA_2$log.mass = log(VA_2$mass)
+VA_adults2$log.svl = log(VA_adults2$svl)
+VA_adults2$log.mass = log(VA_adults2$mass)
+#######Plot Log M by L
+plot(VA_age$log.svl, VA_age$log.mass, pch = 16, cex = 1.3,
+     col = (c('orange', 'green', 'purple', 'blue')[as.numeric(VA_age$maturity)]),
+     xlab = "Log transformed snout-vent length", ylab = "log transformed mass")
+legend("topleft", title = "Age", c("0yo", "1yo", "2yo", "adult (>2yo)"), 
+       fill = c('orange', 'green', 'purple', 'blue'), cex = 0.7)
+abline(lm(log.mass ~ log.svl, data = VA_age), col = "black")
+lm(log.mass ~ log.svl, data = VA_age)
+summary(lm(log.mass ~ log.svl, data = VA_age))
+abline(lm(log.mass ~ log.svl, data = VA_0), col = "orange")
+summary(lm(log.mass ~ log.svl, data = VA_0))
+abline(lm(log.mass ~ log.svl, data = VA_1), col = "green")
+summary(lm(log.mass ~ log.svl, data = VA_1))
+abline(lm(log.mass ~ log.svl, data = VA_2), col = "purple")
+summary(lm(log.mass ~ log.svl, data = VA_2))
+abline(lm(log.mass ~ log.svl, data = VA_adults2), col = "blue")
+summary(lm(log.mass ~ log.svl, data = VA_adults2))
+legend("bottomright", title = "Regression lines", c("n=444, Adjusted R-squared: 0.908, p-value: 2.2e-16", 
+                                                "n=168, Adjusted R-squared: 0.7822, p-value: 2.2e-16",
+                                                "n=75, Adjusted R-squared: 0.8466, p-value: 2.2e-16",
+                                                "n=106, Adjusted R-squared: 0.8133, p-value: 2.2e-16",
+                                                "n=95, Adjusted R-squared: 0.4034, p-value: 2.2e-16"),
+       fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
+title("Log of MbyL by age at VA")
+
+###########################################
+#####Calculate SMI for VA dataset #########
+###########################################
+
+VA_age$SMI <- ScaledMassIndex(VA_age$svl, VA_age$mass)
+head(VA_age)
+
+#calculate SMI for VA adult subset
+VA_adults$SMI <- ScaledMassIndex(VA_adults$svl, VA_adults$mass)
+VA_adults2$SMI <- ScaledMassIndex(VA_adults2$svl, VA_adults2$mass)
+
+#plot SMI
+######################################################
+#GRAPHING#############################################
+plot(VA_age$maturity, VA_age$SMI, xlab = "Age", ylab = "Scaled Mass Index (g)", 
+     main = "Scaled Mass Index for VanAqua OSF",
+     col = (c("orange", "green", "purple", "blue")))
+
+plot(as.factor(VA_age$age), VA_age$SMI, xlab = "Age", ylab = "Scaled Mass Index (g)", 
+     main = "Scaled Mass Index for VanAqua OSF",
+     col = (c("orange")))
+
+#nicer plots
+ggplot(data = VA_age, aes(x = maturity, y = SMI, fill=factor(maturity, labels = c("0yo", "1yo", "2yo",
+                                                                          "adult (>2yo)"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Age (years)", y = "Scaled Mass Index (g)", title = "SMI at VanAqua (2012-2020)")+
+  theme_classic()+
+  scale_fill_manual(values = c("orange", "green", "purple", "blue"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0yo", "1" = "1yo", "2" = "2yo", "adult" = "adult (>2yo)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(data = VA_age, aes(x = as.factor(age), y = SMI, fill=factor(age)))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Age (years)", y = "Scaled Mass Index (g)", title = "SMI at VanAqua (2012-2020)")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggboxplot(VA_age %>% filter(!is.na(maturity)), x = "EB", y = "SMI", facet.by = "maturity")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status at VanAqua")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
+
+############# Shouldn't really be seeing this big of a difference in SMI across ages
+############# Supposed to be 'scaled' by the bsma 
+#########################
+# Try calculating bsma and Lo specific to this VanAqua population - instead of from wild pops
+####################################################################################################
+
+#calculate bsma again but this time automated using smatr() - Standardized Major Axis
+sma(VA_age$log.mass ~ VA_age$log.svl) #use log #the slope of the estimate is the bsma 
+VA.bsma <- 3.949900
+#check if different if just using VA adults
+sma(VA_adults2$log.mass ~ VA_adults2$log.svl)
+VA.a.bsma <- 3.202558
+#wild bsma was 3.0312
+#bsma from VA adults is closer to this and closer to slope of 3 in general (3 supposed to be best?)
+########################
+#calculate Lo
+Lo.VA <- mean(VA_age$svl, na.rm = TRUE)
+Lo.VA #55.09706
+Lo.VA.a <- mean(VA_adults2$svl, na.rm = TRUE)
+Lo.VA.a #64.98735
+#wild Lo was 71.3709 - but the Lo should be arbitrary
+
+########Create new SMI functions for new bsma and Lo
+ScaledMassIndex.VA <- function(x, y) {
+  y * ((Lo.VA / x) ^ VA.bsma)
+}
+
+ScaledMassIndex.va <- function(x, y) {
+  y * ((Lo.VA.a / x) ^ VA.a.bsma)
+}
+
+#apply functions to VA data and create new SMI columns respectively
+VA_age$SMI.VA <- ScaledMassIndex.VA(VA_age$svl, VA_age$mass)
+VA_age$SMI.va <- ScaledMassIndex.va(VA_age$svl, VA_age$mass)
+view(VA_age) #can already see differences in SMI values calculated with each different bsma
+#let's plot to see if the SMI are more standardized across ages now
+#######first with bsma based on full VA dataset (includes juvenile frogs)
+ggplot(data = VA_age, aes(x = as.factor(age), y = SMI.VA, fill=factor(age)))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Age (years)", y = "Scaled Mass Index (g)", title = "SMI at VanAqua using own bsma")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+######now with bsma based only on adults
+ggplot(data = VA_age, aes(x = as.factor(age), y = SMI.va, fill=factor(age)))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Age (years)", y = "Scaled Mass Index (g)", title = "SMI at VanAqua using adult bsma")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+########################################################
+##### SMI's calculated with bsma from full VA dataset definitely seem the most standardized
+###### might need different bsma for each population? Or does that defeat the mathmatical purpose?
+
+
+###do a subset by year of death - just show smi for each frog at death
+#or highlight that against all the others that year?
+
+########################################################
+## create new dataframe combining VA and wild full datasets
+########################################################
+
+adults <- VA_adults2[, c('frog_id', 'pop', 'EB', 'birth_yr', 'mass', 'svl', 'log.mass', 'log.svl', 'SMI')]
+view(adults)
+#add EB row to wild data frame first
+wild_SMI$EB <- 1
+wild_SMI <- wild_SMI %>% 
+  relocate(EB, .after = pop) %>% 
+  rename(mass = avg_mass,
+         svl = avg_SVL,
+         log.mass = log.avg_mass,
+         log.svl = log.avg_SVL)
+view(wild_SMI)
+
+#combine dataframes
+adult <- rbind(adults, wild_SMI)
+view(adult)
+str(adult) #670 rows, 9 columns - check: combined VA_adults2 (n=168) + wild_SMI (n=502) = GOOD
+#recalculate SMI and try SMI using VA.bsma also
+adult$SMI <- ScaledMassIndex(adult$svl, adult$mass)
+adult$SMI.VA <- ScaledMassIndex.VA(adult$svl, adult$mass)
+adult$SMI.va <- ScaledMassIndex.va(adult$svl, adult$mass)
+view(adult)
+
+########### Plot the SMI
+ggplot(data = adult, aes(x = pop, y = SMI, fill=factor(pop, labels = c("VA", "CH", "MS",
+                                                                                  "MT", "MV", "ST"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in adult VA vs wild")+
+  theme_classic()+
+  scale_fill_manual(values = c("green", "orange", "yellow", "purple", "blue", "brown"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("VA" = "VanAqua", "CH" = "Chaplin", "MS" = "Maria Slough", "MT" = "Mountain",
+                            "MV" = "Morris Valley", "ST" = "Semmihault"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+#create new column to group wild populations together
+adult <- adult %>% 
+  mutate(population = case_when(pop == "CH" ~ "wild",
+                                pop == "MS" ~ "wild",
+                                pop == "MV" ~ "wild",
+                                pop == "MT" ~ "wild",
+                                pop == "ST" ~ "wild",
+                                pop == "VA" ~ "VA",)) %>% 
+  relocate(population, .after = 2)
+adult$population <- as.factor(adult$population)
+str(adult)
+
+#plot again but comparing full overall wild with VA
+ggplot(data = adult, aes(x = population, y = SMI, fill=factor(population, labels = c("VA", "wild"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in adult VA vs overall wild",
+       subtitle = "using wild bsma")+
+  theme_classic()+
+  scale_fill_manual(values = c("green", "orange"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("VA" = "Vancovuer Aquarum", "wild" = "Combined Wild"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+############ NOTE: VanAqua SMI is based on fall measurements while wild is from breeding season (spring)
+###########This is also using wild bsma - now try with alternative bsma
+ggplot(data = adult, aes(x = population, y = SMI.VA, fill=factor(population, labels = c("VA", "wild"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in adult VA vs overall wild", subtitle = "using VA bsma")+
+  theme_classic()+
+  scale_fill_manual(values = c("green", "orange"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("VA" = "Vancovuer Aquarum", "wild" = "Combined Wild"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(data = adult, aes(x = population, y = SMI.va, fill=factor(population, labels = c("VA", "wild"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI in adult VA vs overall wild",
+       subtitle = "using VA adult's bsma")+
+  theme_classic()+
+  scale_fill_manual(values = c("green", "orange"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("VA" = "Vancovuer Aquarum", "wild" = "Combined Wild"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+##### facet with status
+ggboxplot(adult, x = "EB", y = "SMI", facet.by = "population")+ #I like this graph better than the one below
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
+
+ggboxplot(adult, x = "population", y = "SMI", facet.by = "EB")+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI by status")+
+  scale_x_discrete(labels=c("VA" = "VanAqua", "wild" = "Wild"))
