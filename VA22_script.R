@@ -6,6 +6,7 @@ library(dplyr)
 library(ggpubr)
 library(boot)
 library(mvnormtest)
+library(crunch)
 
 theme_set(theme_bw())
 
@@ -14,7 +15,16 @@ VA_data <- read.csv("OSF_VA22females.csv", header = TRUE)
 head(VA_data)
 view(VA_data)
 dim(VA_data) #35 rows, 24 columns
-str(VA_data) 
+VA_data$grade_01 <- factor(VA_data$grade_01, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
+VA_data$frog_code <- as.factor(VA_data$frog_code)
+VA_data$frog_id <- as.factor(VA_data$frog_id)
+VA_data$treatment <- factor(VA_data$treatment, levels = c(
+  "C", "H", "V", "HV", "PHV"), ordered = FALSE)
+VA_data$source <- as.factor(VA_data$source)
+VA_data$birth_type <- as.factor(VA_data$birth_type)
+VA_data$status <- as.factor(VA_data$status)
+str(VA_data)
+# percent_hrs is currently character - should be numeric but leave for now 
 summary(VA_data)
 attach(VA_data)
 
@@ -98,6 +108,8 @@ left <- mass_spr_mean - mass_spr_error
 right <- mass_spr_mean + mass_spr_error
 print(c(left,right)) # (41.56360, 53.51583)
 
+plot(mass_fall ~ mass_spr, main = "Fall Mass by Spring Mass")
+
 #boostrap ci's for non-normal variables: age, eggs_laid, to_first, hrs_apx, tot_num_amplex, tot_num_suc
 
 #use boot function to find the R bootstrap of the mean
@@ -118,72 +130,210 @@ plot(eggs_laid_boot)
 boot.ci(boot_out <- eggs_laid_boot,
         type = c("norm", "basic", "perc", "bca"))
 
+#subset my to_first to exclude PHV since they are all -1
+first_noPHV <- VA_data %>% 
+  filter(to_first > 0) #has filtered out PHV and F treatments 
+view(first_noPHV)
 
-to_first_boot <- boot(VA_data$to_first, my_mean, 1000) #need to omit PHV - all -1 values
+to_first_boot <- boot(first_noPHV$to_first, my_mean, 1000) #PHV and F excluded
 to_first_boot
 plot(to_first_boot)
 boot.ci(boot_out <- to_first_boot, 
         type = c("norm", "basic", "perc", "bca"))
-###error. did not work. come back
 
-hrs_apx_boot <- boot(VA_data$hrs_apx, my_mean, 1000) #not working???
+#filter out NA values for hrs_apx
+hrs_na <- VA_data %>% 
+  filter (!is.na(hrs_apx))
+
+hrs_apx_boot <- boot(hrs_na$hrs_apx, my_mean, 1000) #no F treatment
 hrs_apx_boot
 plot(hrs_apx_boot)
-boot.ci(boot_out <- hrs_apx_boot, #confidence intervals for touch phase
+boot.ci(boot_out <- hrs_apx_boot, 
         type = c("norm", "basic", "perc", "bca"))
-### error for plot and boot.ci
 
-tot_num_amplex_boot <- boot(VA_data$tot_num_amplex, my_mean, 1000) #total number of amplectants
-tot_num_amplex_boot
+#filter out NA values
+num_amplex <- VA_data %>% 
+  filter (!is.na(tot_num_amplex))
+
+tot_num_amplex_boot <- boot(num_amplex$tot_num_amplex, my_mean, 1000) #total number of amplectants
+tot_num_amplex_boot #no F treatment
 plot(tot_num_amplex_boot)
-boot.ci(boot_out <- tot_num_amplex_boot, #error: all values of t1* are NA
+boot.ci(boot_out <- tot_num_amplex_boot,
         type = c("norm", "basic", "perc", "bca"))
-###error
 
-tot_num_suc_boot <- boot(VA_data$tot_num_suc, my_mean, 1000) #bootstrap the mean for touch phase
+#filter out NA values
+suc_amplex <- VA_data %>% 
+  filter(!is.na(tot_num_suc))
+
+tot_num_suc_boot <- boot(suc_amplex$tot_num_suc, my_mean, 1000) #no F
 tot_num_suc_boot
 plot(tot_num_suc_boot)
-boot.ci(boot_out <- tot_num_suc_boot, #confidence intervals for touch phase
+boot.ci(boot_out <- tot_num_suc_boot,
         type = c("norm", "basic", "perc", "bca"))
-###error
-
-#bunch of errors in calculating CI's that I need to come back to
-#maybe need to separate into treatments to calculate CI? 
-#why so many 'equal' values or NA?
 
 
-
+###do I want confidence intervals by treatment? Or leave as full pop CI's ?
 
 
 ##try some scatterplots to visualize
 ggplot(VA_data, aes(mass_spr, to_first,
                        colour = treatment))+
   geom_point(size = 2)+
-  labs(title = "time to first amplexus by weight")
+  labs(title = "time to first amplexus by spring weight", x = "mass (g)", y = "time (hrs)")
 
 ggplot(VA_data, aes(treatment, to_first,
                     colour = treatment))+
   geom_point(size = VA_data$age)+ #size of point is associated with age of frog. cannot differentiate overlaid points
-  labs(title = "time to first amplexus by treatment")
+  labs(title = "time to first amplexus by treatment", caption = "size = age of frog", y = "time (hrs)")
 
 ggplot(VA_data, aes(treatment, to_first, #time to first by status (ER, EB, OK)
                     colour = status))+
   geom_point(size = VA_data$age)+ 
-  labs(title = "time to first amplexus by treatment")
+  labs(title = "time to first amplexus by treatment",
+       caption = "size = age of frog", y = "time (hrs)")
 
 ggplot(VA_data, aes(treatment, hrs_apx, #total hours in amplexus with status (ER, EB, OK)
                     colour = status))+
   geom_point(size = VA_data$age)+ 
-  labs(title = "hours in amplexus by treatment")
+  labs(title = "total hours in amplexus by treatment",
+       y = "time (hrs)", caption = "size = age of frog")
 
-ggplot(VA_data, aes(treatment, hrs_apx, #total hours in amplexus with status (ER, EB, OK)
-                    colour = status))+
-  geom_point(size = VA_data$tot_num_amplex)+ 
-  labs(title = "Hours in amplexus by treatment", subtitle = "size as number of amplectants")
-#size as the total number of amplexus phases - doesn't quite work. Some have too many
+ggplot(VA_data, aes(status, hrs_apx, #total hours in amplexus with status (ER, EB, OK)
+                    colour = treatment))+
+  geom_point(size = VA_data$age)+ 
+  labs(title = "Total hours in amplexus by status", caption = "size = age of frog",
+       y = "time (hrs)")
 
 ggplot(VA_data, aes(tot_num_amplex, hrs_apx, #total hours in amplexus on number of amplectants
                     colour = status))+
-  geom_point(size = VA_data$age)+ 
-  labs(title = "Hours in amplexus by total number of amplectants") #maybe this should be bar chart or box?
+  geom_point(size = (VA_data$tot_num_suc)+2)+ 
+  labs(title = "Total hours in amplexus by total number of amplectants",
+       x = "number of amplectants", y = "time (hrs)",
+       caption = "size = number of successful amplexes + 2 (0 is min, 2 is max)") #maybe this should be bar chart or box?
 
+ggplot(VA_data, aes(treatment, to_first, #time to first by status (ER, EB, OK)
+                    colour = status))+
+  geom_point(size = VA_data$grade_01 +1)+ 
+  labs(title = "time to first amplexus by treatment",
+       caption = "size = (ultrasound grade 01) + 1", y = "time (hrs)")
+
+ggplot(VA_data, aes(treatment, hrs_apx, 
+                    colour = status))+
+  geom_point(size = VA_data$grade_01 +1)+ 
+  labs(title = "Total hours in amplexus by treatment",
+       caption = "size = (ultrasound grade 01) + 1", y = "time (hrs)")
+
+ggplot(VA_data, aes(status, hrs_apx, 
+                    colour = treatment))+
+  geom_point(size = VA_data$grade_01 +1)+ 
+  labs(title = "Total hours in amplexus by status",
+       caption = "size = (ultrasound grade 01) + 1", y = "time (hrs)")
+
+##########################################################################
+### nicer graphs of amplexus behaviour (multiple metrics) by treatment ###
+##########################################################################
+#filter out F treatment - not applicable for amplexus behaviours
+VA_noF <- VA_data %>% 
+  filter(treatment != "F")
+view(VA_noF) # n=30
+### time to first ###
+ggplot(data = VA_noF, aes(x = treatment, y = to_first, fill=factor(treatment, 
+                                                                    labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Time (hrs)", title = "Time until first contact")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC", "#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#facet by treatment
+ggboxplot(VA_noF, x = "frog_code", y = "to_first", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Time to first contact")
+#### hrs apx ###
+ggplot(data = VA_noF, aes(x = treatment, y = hrs_apx, fill=factor(treatment, 
+                                                                   labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Time (hrs)", title = "Total time in amplexus", subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC", "#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#facet by treatment
+ggboxplot(VA_noF, x = "frog_code", y = "hrs_apx", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Total time in amplexus")
+#### average touch duration ###
+ggplot(data = VA_noF, aes(x = treatment, y = avg_tch_dur, fill=factor(treatment, 
+                                                                  labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Time (hrs)", title = "Average Touch Phase Duration", subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC", "#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggboxplot(VA_noF, x = "frog_code", y = "avg_tch_dur", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Average Touch Phase Duration")
+### average attempt ###
+ggplot(data = VA_noF, aes(x = treatment, y = avg_atmp_dur, fill=factor(treatment, 
+                                                                      labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Time (hrs)", title = "Average Attempt Phase Duration", subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC", "#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggboxplot(VA_noF, x = "frog_code", y = "avg_atmp_dur", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Average Attempt Phase Duration")
+### average successful attempts ###
+ggplot(data = VA_noF, aes(x = treatment, y = avg_suc_dur, fill=factor(treatment, 
+                                                                      labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Time (hrs)", title = "Average Successful Phase Duration", subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggboxplot(VA_noF, x = "frog_code", y = "avg_suc_dur", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Average Successful Phase Duration")
+### total number of amplectants ###
+ggplot(data = VA_noF, aes(x = treatment, y = tot_num_amplex, fill=factor(treatment, 
+                                                                      labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Frequency", title = "Total number of amplectants", subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggboxplot(VA_noF, x = "frog_code", y = "tot_num_amplex", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Frequency", title = "Total number of amplectants")
+### total number of successful amplex ###
+ggplot(data = VA_noF, aes(x = treatment, y = tot_num_suc, fill=factor(treatment, 
+                                                                         labels = c("C", "H", "V", "HV", "PHV"))))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Frequency", title = "Total number of successful amplex",
+       subtitle = "over first 59 hours")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggboxplot(VA_noF, x = "frog_code", y = "tot_num_suc", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Frequency", title = "Total number of successful amplex")
