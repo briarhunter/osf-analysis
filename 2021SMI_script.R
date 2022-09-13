@@ -300,9 +300,9 @@ plot(mass_post21 ~ svl_post21, data = prepo, main = "mass by svl post-brumation 
 plot(mass_pre_21 ~ svl_pre21, data = prepo, main = "mass by svl pre-brumation 2021")
 plot(avg_mass ~ avg_SVL, data = wild_SMI, main = "mass by svl for wild frogs")
 
-###########################
-#Use steph's code 
-###########################
+######################################################
+#Use steph's code ################# Linear Regressions
+######################################################
 
 str(prepo)
 #subset prepo data frame by populations: GVZ, VA
@@ -461,6 +461,10 @@ legend("bottomright", title = "Regression lines", c("n=75, Adjusted R-squared: 0
        fill = c('black', 'blue', 'green'), cex = 0.6)
 title("Pre-brumation (Nov) 2021")
 
+##################################### The pre-brum 2020 regression is the best (highest R-squared) for GVZoo
+### Will use this regression to calculate GVZoo's own bsma #################################################
+#################### Will use larger VA dataset to calculate bsma for that population ######################
+
 # Mass (dependant) vs length (independent)
 ############################ Wild Frog Data - full dataset (from 2012-2022*)
 plot(wild_SMI$avg_SVL, wild_SMI$avg_mass, pch = 16, cex = 1.0,
@@ -535,7 +539,9 @@ title("Log of M by L Full Wild dataset")
 #         Mi is mass of individual i
 #         Lo is an arbitraty value of length (e.g. arithmetric mean of L for the population of study)
 #         Li is the linear body measurement of individual i
-#         bsma is the scaling exponent: calculated indirectly by dividing the slope from an OLS regression (bOLS) by the Pearson’s correlation coefficient r (LaBarbera 1989), or directly using online software (Bohonak and van der Linde 2004).
+#         bsma is the scaling exponent: calculated indirectly by dividing the slope from an OLS regression (bOLS) 
+#by the Pearson’s correlation coefficient r (LaBarbera 1989), or directly using online software (Bohonak and van der Linde 2004).
+# calculate a different bsma for each population (VA, TZ, GVZ, wild) to account for different growth patterns in each
 
 # calculate bsma manually (described in Pieg & Green 2009 p.1886)
 #for Wild frogs - using wild allometric growth as standard for scaling exponent
@@ -543,21 +549,21 @@ lm(wild_SMI$log.avg_mass ~ wild_SMI$log.avg_SVL) #using log
 slope <- 2.336 #from variable above
 cor.test(wild_SMI$log.avg_SVL, wild_SMI$log.avg_mass, method = c("pearson")) #using log again 
 pcorr <- 0.7706459 #from above (Pearson's product-moment correlation)
-bsma <- slope / pcorr #manual calculation of bsma (scaling exponent)
-bsma #3.031224
+bsma.w <- slope / pcorr #manual calculation of bsma (scaling exponent)
+bsma.w #3.031224
 
 #calculate bsma again but this time automated using smatr() - Standardized Major Axis
 library(smatr)
 sma(wild_SMI$log.avg_mass ~ wild_SMI$log.avg_SVL) #use log #the slope of the estimate is the bsma 
-bsma <- 3.031213
+bsma.w <- 3.031213
 
-##calculate bsma for each population (i.e. VA and GVZ) 
-##### should each population have their own scaling exponent ?
-bsma_GVZ <- sma(prepo.GVZ$log.mass_pre20 ~ prepo.GVZ$log.svl_pre20) #bsma = 3.183815
-bsma_VA <- sma(prepo.VA$log.mass_pre20 ~ prepo.VA$log.svl_pre20) #bsma = 3.615024
+##calculate bsma for each GVZoo based on pre20 data - the best regression for GVZ
+##### each population have their own scaling exponent - VA will be calculated later
+sma(prepo.GVZ$log.mass_pre20 ~ prepo.GVZ$log.svl_pre20)
+bsma.GVZ <- 3.183815
 
 #calculate Lo
-Lo <- mean(wild_SMI$avg_SVL, na.rm = TRUE)
+Lo <- mean(wild_SMI$svl, na.rm = TRUE)
 Lo #71.37092
 
 Lo.GVZ <- mean(prepo.GVZ$svl_pre20, na.rm = TRUE)
@@ -568,18 +574,24 @@ Lo.VA #64.59044
 
 #######create function for ScaledMassIndex using ^Mi = Mi ((Lo/Li)^bsma)
 ##using bsma from MbyL regression of wild frog data
-ScaledMassIndex <-
+ScaledMassIndex.w <-
   function(x, y) {
-    y * ((Lo / x) ^ bsma)
+    y * ((Lo / x) ^ bsma.w)
   }
 
 wild_SMI$SMI <- ScaledMassIndex(wild_SMI$avg_SVL, wild_SMI$avg_mass)
 head(wild_SMI)
 
-#calculate SMI for GVZ and VA data in "prepo" data frame
-prepo$SMIpre20 <- ScaledMassIndex(prepo$svl_pre20, prepo$mass_pre20)
-prepo$SMIpo21 <- ScaledMassIndex(prepo$svl_post21, prepo$mass_post21)
-prepo$SMIpre21 <- ScaledMassIndex(prepo$svl_pre21, prepo$mass_pre_21)
+#### make SMI equation using GVZ bsma - but keep same Lo.w because this is arbitrary chosen length
+ScaledMassIndex.gvz <-
+  function(x, y) {
+    y * ((Lo / x) ^ bsma.GVZ)
+  }
+
+#calculate SMI for GVZ and VA data in "prepo" data frame using wild bsma
+prepo$SMIpre20 <- ScaledMassIndex.w(prepo$svl_pre20, prepo$mass_pre20)
+prepo$SMIpo21 <- ScaledMassIndex.w(prepo$svl_post21, prepo$mass_post21)
+prepo$SMIpre21 <- ScaledMassIndex.w(prepo$svl_pre21, prepo$mass_pre_21)
 view(prepo)
 
 #plot SMI
@@ -681,6 +693,101 @@ ggboxplot(prepo, x = "EB", y = "SMIpre21", facet.by = "pop")+
 ###############change data frame to stacked - columns for season (pre-brumate, post-brumate), WC (Wild or Captive)
 ###will then be able to compare all on same graph using facet.by()
 # ggboxplot(wild_SMI, x = "season", y = "SMI", facet.by = "population")
+####################################################################################################
+###############subset prepo to just mass and svl and transform to long / stacked form ##############
+####################################################################################################
+prepo.long <- prepo[, c(1:5, 7:8, 10:12)]
+prepo.l <- melt(setDT(prepo.long), id=1:4, measure=patterns("^mass", "^svl"),
+               value.name=c("mass", "svl"), variable.name="when", na.rm = FALSE)
+prepo.l <- prepo.l %>% 
+  mutate(season = case_when(when == "1" ~ "pre20", when == "2" ~ "post21", when == "3" ~ "pre21")) %>%
+  relocate(season, .after = EB) 
+prepo.l$when <- NULL #drop column now that we have proper season
+view(prepo.l)
+
+################# subset out GVZoo and VA into own dataframes to calculate separate SMI's with own bsma ########
+prepo.gvz <- subset(prepo.l, pop == "GVZ")
+prepo.va <- subset(prepo.l, pop == "VA")
+
+####################### add SMI column to each subset data frame using respective bsma 
+### VA.bsma calculated further down from VA_age dataset. R-squared on the regression is 0.908
+prepo.gvz$SMI <- ScaledMassIndex.gvz(prepo.gvz$svl, prepo.gvz$mass)
+prepo.va$SMI <- ScaledMassIndex.VA(prepo.va$svl, prepo.va$mass)
+view(prepo.gvz) #n=126
+view(prepo.va) #n=135
+###### combine these two datasets, now with their proper respective SMI's
+combine_prepo <- rbind(prepo.gvz, prepo.va)
+
+#add in wild SMI - need to make wild dataset that includes season
+wild.move <- wild_SMI[, c(1:6, 9)]
+wild.move$season <- "postbrum" 
+wild.move <- wild.move %>% 
+  relocate(season, .after = EB) %>% 
+  relocate(birth_yr, .after = pop)
+#combine dataframes
+full_pp <- rbind(combine_prepo, wild.move)
+view(full_pp)
+#add some other columns to make more cohesive for grouping
+full_pp <- full_pp %>% 
+  mutate(when = case_when(grepl("pre", season) ~ "fall", grepl("post", season) ~ "spring")) %>% 
+  relocate(when, .after = season)
+#column for wild vs all zoos
+full_pp <- full_pp %>% 
+  mutate(population = case_when(pop == "GVZ" ~ "GVZ", pop == "VA" ~ "VA", pop == "CH" ~ "wild",
+                                pop == "ST" ~ "wild", (grepl("M", pop) ~ "wild"))) %>% 
+  relocate(population, .after = pop)
+view(full_pp)
+full_pp$population <- as.factor(full_pp$population)
+full_pp$season <- factor(full_pp$season, labels = c("pre20", "post21", "postbrum", "pre21"), ordered = TRUE)
+str(full_pp)
+dim(full_pp) #763 rows, 10 columns
+
+###### Plot all together now! ##############################################
+###########################################################################
+ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~season)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "seasonal SMI from 2020-2021")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~when)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "seasonal SMI from 2020-2021")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+####facet by status
+ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(when ~ EB)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI by final status", 
+       subtitle = "0 = egg bound, 1 = other")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(data = full_pp, aes(x = population, y = SMI, fill=EB))+
+  geom_boxplot(show.legend = TRUE)+
+  facet_grid(~when)+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI over seasons")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_fill_discrete(name = "Dose", labels = c("0" = "egg bound", "1" = "other"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggboxplot(full_pp, x = "EB", y = "SMI", facet.by = "population")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI in egg bound vs OK")+
+  scale_x_discrete(labels=c("0" = "EB", "1" = "OK"))+
+  theme(text = element_text(family = "Arial"))
+
 
 
 #####mean SMI per population
@@ -1187,6 +1294,26 @@ ggboxplot(VA_age %>% filter(!is.na(maturity)), x = "EB", y = "SMI", facet.by = "
   labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status at VanAqua")+
   scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
 
+#graph EB vs OK over time
+VA_age.clean <- VA_age %>% #filter out the NA values for status
+  filter(!is.na(EB))
+
+# status.names <- c('0' = "Egg bound",
+#                   '1' = "other")
+#can't get the above line to work with below boxplot to change facet names - come back to
+ggboxplot(VA_age.clean, x = "age", y = "SMI", facet.by = "EB")+
+  labs(x = "Age (yrs)", y = "Scaled Mass Index (g)", title = "SMI over age at VanAqua",
+       subtitle = "0 = egg bound, 1 = other")
+
+####same facets by status but using VA own bsma (bsma.VA)
+ggboxplot(VA_age.clean, x = "age", y = "SMI.VA", facet.by = "EB")+
+  labs(x = "Age (yrs)", y = "Scaled Mass Index (g)", title = "SMI over age at VanAqua",
+       subtitle = "0 = egg bound, 1 = other") #####here now the "1" (i.e. ok) looks standardized but see diff in EB
+
+ggboxplot(VA_age.clean %>% filter(!is.na(maturity)), x = "EB", y = "SMI.VA", facet.by = "maturity")+
+  labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status at VanAqua")+
+  scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
+
 ############# Shouldn't really be seeing this big of a difference in SMI across ages
 ############# Supposed to be 'scaled' by the bsma 
 #########################
@@ -1209,13 +1336,13 @@ Lo.VA.a <- mean(VA_adults2$svl, na.rm = TRUE)
 Lo.VA.a #64.98735
 #wild Lo was 71.3709 - but the Lo should be arbitrary
 
-########Create new SMI functions for new bsma and Lo
+########Create new SMI functions for new bsma using old Lo
 ScaledMassIndex.VA <- function(x, y) {
-  y * ((Lo.VA / x) ^ VA.bsma)
+  y * ((Lo / x) ^ VA.bsma)
 }
 
 ScaledMassIndex.va <- function(x, y) {
-  y * ((Lo.VA.a / x) ^ VA.a.bsma)
+  y * ((Lo / x) ^ VA.a.bsma)
 }
 
 #apply functions to VA data and create new SMI columns respectively
@@ -1253,7 +1380,7 @@ ggplot(data = VA_age, aes(x = as.factor(age), y = SMI.va, fill=factor(age)))+
 
 adults <- VA_adults2[, c('frog_id', 'pop', 'EB', 'birth_yr', 'mass', 'svl', 'log.mass', 'log.svl', 'SMI')]
 view(adults)
-#add EB row to wild data frame first
+#add EB column to wild data frame first
 wild_SMI$EB <- 1
 wild_SMI <- wild_SMI %>% 
   relocate(EB, .after = pop) %>% 
@@ -1339,3 +1466,279 @@ ggboxplot(adult, x = "EB", y = "SMI", facet.by = "population")+ #I like this gra
 ggboxplot(adult, x = "population", y = "SMI", facet.by = "EB")+
   labs(x = "Population", y = "Scaled Mass Index (g)", title = "SMI by status")+
   scale_x_discrete(labels=c("VA" = "VanAqua", "wild" = "Wild"))
+
+
+###############################################################
+####### look at (fall) mass changes with age in TZ and VA
+###############################################################
+mass_age.wide <- read.csv("fall_mass_byage.csv", header = TRUE)
+head(mass_age.wide)
+view(mass_age.wide)
+#need to transform into long form
+mass_age <- melt(setDT(mass_age.wide), id=1:9, measure=patterns("^mass"),
+              value.name=c("mass"), variable.name="ageof", na.rm = TRUE)
+mass_age <- mass_age %>% 
+  mutate(age_mass = case_when(ageof == 'mass0' ~ '0',
+                              ageof == 'mass1' ~ '1',
+                              ageof ==  'mass2' ~ '2',
+                              ageof == 'mass3' ~ '3',
+                              ageof ==  'mass4' ~ '4',
+                              ageof ==  'mass5' ~ '5',
+                              ageof ==  'mass6' ~ '6',
+                              ageof == 'mass7' ~ '7',
+                              ageof ==  'mass8' ~ '8',
+                              ageof ==  'mass9' ~ '9',
+                              ageof ==  'mass10' ~ '10',
+                              ageof == 'mass11' ~ '11',
+                              ageof == 'mass12' ~ '12')) %>% 
+  relocate(age_mass, .after = EB)
+mass_age$ageof <- NULL  #can now drop the ageof column since we have proper age       
+view(mass_age)        
+dim(mass_age) #566 rows, 11 columns
+ 
+mass_age$ID <- as.factor(mass_age$ID) #convert a bunch of chr to factor
+mass_age$pop <- as.factor(mass_age$pop)
+mass_age$source <- as.factor(mass_age$source)
+mass_age$birth_site <- as.factor(mass_age$birth_site) #12 levels
+mass_age$birth_type <- as.factor(mass_age$birth_type) #2 levels 
+mass_age$EB <- as.factor(mass_age$EB) #as factor. Two levels: 0=EB 1=not (OK)
+mass_age$age_mass <- as.factor(mass_age$age_mass)
+mass_age$age_mass <- factor(mass_adult$age_mass, 
+                            levels = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"),
+                            ordered = TRUE) #double check the level order
+str(mass_age)
+summary(mass_age)
+
+#visualize normality
+hist(mass_age$mass) #bimodal thing again from 0-1 year olds
+hist(mass_age$age_yrs)
+ggqqplot(mass_age$mass, na.rm = TRUE)
+shapiro.test(mass_age$mass) #significant = not-normal
+# subset out adults (>2 years old at mass)
+mass_adult <- mass_age %>% 
+  filter(age_mass != 0 & age_mass != 1 & age_mass != 2)
+view(mass_adult)
+dim(mass_adult) #273 rows, 11 columns (down from 566)
+#order the levels of age_mass correctly
+mass_adult$age_mass <- factor(mass_adult$age_mass, 
+                              levels = c("3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
+
+#check if normality is any different for adults
+hist(mass_adult$mass) #looks good
+shapiro.test(mass_adult$mass) # NORMAL! p-value = 0.06646
+
+#plot mass by age
+ggplot(data = mass_age, aes(x = age_mass, y = mass, fill=factor(pop)))+ #can swap out mass_age for mass_adult to compare
+  geom_boxplot()+
+  labs(x = "Age", y = "Mass (g)", title = "mass of adult OSF with age")+
+  theme_classic()+
+  scale_fill_discrete(name = "Population",
+                      breaks = c("TZ", "VA"),
+                      labels = c("TZ", "VA"))+
+   scale_fill_manual(name = "Population", 
+                     values = c("blue", "green"))+
+  theme(legend.position = "top")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggboxplot(mass_age, x = "pop", y = "mass", facet.by = "EB")+
+  labs(x = "Population", y = "Mass (g)", title = "Fall mass by status")+
+  scale_x_discrete(labels=c("VA" = "VanAqua", "TZ" = "TZoo"))
+
+#filter out NA for status
+mass.clean <- mass_age %>% #filter out the NA values for status
+  filter(!is.na(EB))
+
+ggboxplot(mass.clean, x = "age_mass", y = "mass", facet.by = "EB")+
+  labs(x = "Age (years)", y = "Mass (g)", title = "Fall mass by status - combined TZ + VA", 
+       subtitle = "0 = egg bound, 1 = other")
+
+ggboxplot(mass.clean, x = "EB", y = "mass", facet.by = "age_mass")+
+  labs(x = "Status", y = "Mass (g)", title = "TZ + VA fall mass by status")+
+  scale_x_discrete(labels=c("0" = "EB", "1" = "OK"))
+
+#Regression of M by Age
+#subset by zoo
+ma_VA <- subset(mass_age, pop == "VA") #n=480
+ma_TZ <- subset(mass_age, pop == "TZ") #n=86
+
+plot(as.numeric(mass_age$age_mass), mass_age$mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(mass_age$pop)]),
+     xlab = "Age (yrs)", ylab = "Mass (g)")
+legend("topleft", title = "Population", c("Toronto Zoo", "Vancouver Aquarium"), 
+       fill = c('blue', 'green'), cex = 0.7)
+abline(lm(mass ~ age_mass, data = mass_age), col = "black")
+lm(mass ~ age_mass, data = mass_age)
+summary(lm(mass ~ age_mass, data = mass_age))
+abline(lm(mass ~ age_mass, data = ma_TZ), col = "blue")
+summary(lm(mass ~ age_mass, data = ma_TZ))
+abline(lm(mass ~ age_mass, data = ma_VA), col = "green")
+summary(lm(mass ~ age_mass, data = ma_VA))
+legend("bottomright", title = "Regression lines", c("n=566, Adjusted R-squared: 0.5867, p-value: 2.2e-16", 
+                                                "n=86, Adjusted R-squared: 0.2408, p-value: 0.000471",
+                                                "n=480, Adjusted R-squared: 0.6118, p-value: 2.2e-16"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("Mass by age")
+
+#try with adult only data
+maa_VA <- subset(mass_adult, pop == "VA") #n=195
+maa_TZ <- subset(mass_adult, pop == "TZ") #n=78
+
+plot(as.numeric(mass_adult$age_mass), mass_adult$mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(mass_adult$pop)]),
+     xlab = "Age (yrs)", ylab = "Mass (g)")
+legend("topleft", title = "Population", c("Toronto Zoo", "Vancouver Aquarium"), 
+       fill = c('blue', 'green'), cex = 0.6)
+abline(lm(mass ~ age_mass, data = mass_adult), col = "black")
+lm(mass ~ age_mass, data = mass_adult)
+summary(lm(mass ~ age_mass, data = mass_adult))
+abline(lm(mass ~ age_mass, data = maa_TZ), col = "blue")
+summary(lm(mass ~ age_mass, data = maa_TZ))
+abline(lm(mass ~ age_mass, data = maa_VA), col = "green")
+summary(lm(mass ~ age_mass, data = maa_VA))
+legend("bottomright", title = "Regression lines", c("n=273, Adjusted R-squared: 0.126, p-value: 9.905e-07", 
+                                                    "n=78, Adjusted R-squared: 0.1301, p-value: 0.02194",
+                                                    "n=195, Adjusted R-squared: 0.2036, p-value: 4.825e-08"),
+       fill = c('black', 'blue', 'green'), cex = 0.6)
+title("Mass by age - adults only")
+####can we plot a more curving line to this rather than straight line of best fit? may not be linear relationship
+
+#######Log transformation
+mass_age$log.mass = log(mass_age$mass)
+ma_TZ$log.mass = log(ma_TZ$mass)
+ma_VA$log.mass = log(ma_VA$mass)
+mass_age$log.age = log(as.numeric(mass_age$age_mass))
+ma_TZ$log.age = log(as.numeric(ma_TZ$age_mass))
+ma_VA$log.age = log(as.numeric(ma_VA$age_mass))
+
+plot(mass_age$log.age, mass_age$log.mass, pch = 16, cex = 1.3,
+     col = (c('blue', 'green')[as.numeric(mass_age$pop)]),
+     xlab = "Log transformed age", ylab = "Log transformed mass")
+legend("topleft", title = "Population", c("Toronto Zoo", "Vancouver Aquarium"), 
+       fill = c('blue', 'green'), cex = 0.6)
+abline(lm(log.mass ~ log.age, data = mass_age), col = "black")
+lm(log.mass ~ log.age, data = mass_age)
+summary(lm(log.mass ~ log.age, data = mass_age))
+abline(lm(log.mass ~ log.age, data = ma_TZ), col = "blue")
+summary(lm(log.mass ~ log.age, data = ma_TZ))
+abline(lm(log.mass ~ log.age, data = ma_VA), col = "green")
+summary(lm(log.mass ~ log.age, data = ma_VA))
+legend("bottomright", title = "Regression lines", c("n=566, Adjusted R-squared: 0.659, p-value: 2.2e-16", 
+                                                    "n=86, Adjusted R-squared: 0.2095, p-value: 5.587e-06",
+                                                    "n=480, Adjusted R-squared: 0.6845, p-value: 2.2e-16"),
+       fill = c('black', 'blue', 'green'), cex = 0.8)
+title("Log of mass by age")
+
+################################################################################################
+####### Let's do some ANOVAs and/or Kruskal-Wallis tests to see if differences are significant
+################################################################################################
+####### Compare SMI among populations (using SMI_zoos dataset and looking btw 'populations')
+
+#Hypotheses
+#Null: There is no difference in the means of factor A, B, C, D
+#Alternative: There is a difference in the means of factor A, B, C, D
+
+#Assumptions:
+#Randomly sampled
+#Independently sampled - this is true because single year snapshot so only one measurement per frog
+#Normality - my variables going in (mass & svl) were not normal but need to check for calculated SMI
+####ANOVA is "robust" against non-normality when large sample sizes are at play. 
+####Test normality with shapiro-wilks, q-q plots and histogram
+#Equal variance - test with bartlett
+
+#Design:
+#Balanced = sample sizes of all groups are the same
+#Unbalanced = sample sizes of all groups are not the same
+##If unbalanced, need to use alternative SS calculation (type IV)
+
+######### Case 1: SMI ~ population #######
+######## snapshot of 2021 spring SMI #####
+# Continuous dependent variable: SMI
+# Categorical independent variables: GVZ, TZ, VA, Wild
+#Unbalanced design, unequal sample sizes
+
+##################################################################
+# Test assumptions
+hist(SMI_zoos$SMI) #looking for bell shape
+# Histogram looks skewed, long right tail
+
+qqnorm(SMI_zoos$SMI) #looking for straight line
+#looks quite sloped
+
+#Shapiro Wilks test: null hypothesis = variance of data is normally distributed
+#check by population
+shapiro.test(subset(SMI_zoos, population == "GVZ")$SMI) # p-value: 3.361e-05
+shapiro.test(subset(SMI_zoos, population == "TZ")$SMI) # p-value: 0.3032
+shapiro.test(subset(SMI_zoos, population == "VA")$SMI) # p-value: 0.0009386
+shapiro.test(subset(SMI_zoos, population == "wild")$SMI) # p-value: 0.5215
+# TZ and wild are normal (p > 0.05) but GVZ and VA are not.
+# TZ n=9, wild n=45, GVZ n=41, VA n=15
+# TZ may have come out as normal just because of very small sample size 
+
+#try transformation
+SMI_zoos$log.SMI <- log(SMI_zoos$SMI)
+plot(SMI_zoos$log.SMI)
+hist(SMI_zoos$log.SMI) #looks slightly better
+qqnorm(SMI_zoos$log.SMI) #much better but still not great
+shapiro.test(subset(SMI_zoos, population == "GVZ")$log.SMI) # p-value: 0.001602
+shapiro.test(subset(SMI_zoos, population == "TZ")$log.SMI) # p-value: 0.563
+shapiro.test(subset(SMI_zoos, population == "VA")$log.SMI) # p-value: 0.01827
+shapiro.test(subset(SMI_zoos, population == "wild")$log.SMI) # p-value: 0.2524
+### now it is only GVZoo who is not normal - and much closer than it was. 
+# But GVZoo has highest sample size of other zoos
+# Will still use log transformed data - with higher sample size GVZoo can be considered normal ???
+
+#####################################################################################################
+
+# Test assumption of homogeneity of variance on transformed data
+# Null hypothesis of bartlett: variance is equal
+
+plot(log.SMI~population, data = SMI_zoos)
+bartlett.test(log.SMI~population, data = SMI_zoos)
+# p-value: 0.00551 - reject the null hypothesis
+# the variance is not homogenous so we cannot proceed to ANOVA
+# Alternative tests are Welch-ANOVA or Kruskal-Wallis
+# Kruskal-Wallis does not require normality or homoscedasticity of variances
+# Let's use our untransformed data in Kruskal-Wallis test because KW does not require normality
+
+#####################################################################################################
+# Kruskal-Wallis
+kruskal.test(SMI~population, data = SMI_zoos)
+# chi-squared = 61.988, p-value = 2.211e-13
+# p < 0.05 so we reject the null hypotheses of all mean SMI being equal between populations
+# but we still do not know WHICH population means differ - just know at least one is different
+
+# need to do post-hoc test to determine which populations differ
+# Use Dunn Test (though could also use pairwise.wilcox.test())
+library(FSA) #see citation('FSA') if used in publication
+dunnTest(SMI~population, data = SMI_zoos, method = "holm")
+# if last column (adjusted p-value) is < 0.05 then the indicated means differ significantly
+# GVZ - TZ: p.adj = 2.517e-07 ##### significant
+# GVZ - VA: p.adj = 1.073e-10 ##### significant 
+# TZ - VA: p.adj = 0.9578 #### NOT significant = means of VA and TZ do not differ significantly
+# GVZ - wild: p.adj = 3.378e-04 #### significant
+# TZ - wild: p.adj = 0.00264 ### significant (not as much as others)
+# VA - wild: p.adj = 2.455e-04 ### significant
+
+###### we see that all means differ significantly EXCEPT VA from TZ - but ALL zoos differ significantly from wild
+
+# Plot statistical results to show significant differences
+library(ggstatsplot)
+
+ggbetweenstats(
+  data = SMI_zoos,
+  x = population,
+  y = SMI,
+  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  plot.type = "box",
+  pairwise.comparisons = TRUE,
+  pairwise.display = "significant",
+  centrality.plotting = FALSE,
+  bf.message = FALSE
+)
+
+######### Case 1: SMI ~ age #######
+#####SMI of VanAqua frogs by age from 2011-2022#####
+# Continuous dependent variable: SMI
+# Categorical independent variables: GVZ, TZ, VA, Wild
+#Unbalanced design, unequal sample sizes
