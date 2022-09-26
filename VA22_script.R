@@ -19,7 +19,7 @@ VA_data$grade_01 <- factor(VA_data$grade_01, levels = c("0", "1", "2", "3", "4")
 VA_data$frog_code <- as.factor(VA_data$frog_code)
 VA_data$frog_id <- as.factor(VA_data$frog_id)
 VA_data$treatment <- factor(VA_data$treatment, levels = c(
-  "C", "H", "V", "HV", "PHV"), ordered = FALSE)
+  "C", "H", "V", "HV", "PHV", "F"), ordered = FALSE)
 VA_data$source <- as.factor(VA_data$source)
 VA_data$birth_type <- as.factor(VA_data$birth_type)
 VA_data$status <- as.factor(VA_data$status)
@@ -236,7 +236,7 @@ ggplot(VA_data, aes(status, hrs_apx,
 VA_noF <- VA_data %>% 
   filter(treatment != "F")
 view(VA_noF) # n=30
-### time to first ###
+### time to first #####################################################
 ggplot(data = VA_noF, aes(x = treatment, y = to_first, fill=factor(treatment, 
                                                                     labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -251,7 +251,7 @@ ggplot(data = VA_noF, aes(x = treatment, y = to_first, fill=factor(treatment,
 #facet by treatment
 ggboxplot(VA_noF, x = "frog_code", y = "to_first", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Time (hrs)", title = "Time to first contact")
-#### hrs apx ###
+#### hrs apx #####################################################
 ggplot(data = VA_noF, aes(x = treatment, y = hrs_apx, fill=factor(treatment, 
                                                                    labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -266,7 +266,7 @@ ggplot(data = VA_noF, aes(x = treatment, y = hrs_apx, fill=factor(treatment,
 #facet by treatment
 ggboxplot(VA_noF, x = "frog_code", y = "hrs_apx", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Time (hrs)", title = "Total time in amplexus")
-#### average touch duration ###
+#### average touch duration #####################################################
 ggplot(data = VA_noF, aes(x = treatment, y = avg_tch_dur, fill=factor(treatment, 
                                                                   labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -280,7 +280,7 @@ ggplot(data = VA_noF, aes(x = treatment, y = avg_tch_dur, fill=factor(treatment,
   theme(text = element_text(size = 12))
 ggboxplot(VA_noF, x = "frog_code", y = "avg_tch_dur", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Time (hrs)", title = "Average Touch Phase Duration")
-### average attempt ###
+### average attempt ######################################################
 ggplot(data = VA_noF, aes(x = treatment, y = avg_atmp_dur, fill=factor(treatment, 
                                                                       labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -294,7 +294,7 @@ ggplot(data = VA_noF, aes(x = treatment, y = avg_atmp_dur, fill=factor(treatment
   theme(text = element_text(size = 12))
 ggboxplot(VA_noF, x = "frog_code", y = "avg_atmp_dur", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Time (hrs)", title = "Average Attempt Phase Duration")
-### average successful attempts ###
+### average successful attempts #####################################################
 ggplot(data = VA_noF, aes(x = treatment, y = avg_suc_dur, fill=factor(treatment, 
                                                                       labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -308,7 +308,7 @@ ggplot(data = VA_noF, aes(x = treatment, y = avg_suc_dur, fill=factor(treatment,
   theme(text = element_text(size = 12))
 ggboxplot(VA_noF, x = "frog_code", y = "avg_suc_dur", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Time (hrs)", title = "Average Successful Phase Duration")
-### total number of amplectants ###
+### total number of amplectants #####################################################
 ggplot(data = VA_noF, aes(x = treatment, y = tot_num_amplex, fill=factor(treatment, 
                                                                       labels = c("C", "H", "V", "HV", "PHV"))))+
   geom_boxplot(show.legend = FALSE)+
@@ -337,3 +337,374 @@ ggplot(data = VA_noF, aes(x = treatment, y = tot_num_suc, fill=factor(treatment,
   theme(text = element_text(size = 12))
 ggboxplot(VA_noF, x = "frog_code", y = "tot_num_suc", facet.by = "treatment", scales = "free_x")+
   labs(x = "Individual females", y = "Frequency", title = "Total number of successful amplex")
+########################################
+####### Ultrasound grade by treatment ##
+########################################
+ggplot(data = VA_data, aes(x = treatment, y = grade_01, colour = treatment))+
+  geom_point(size = 3, show.legend = FALSE)+
+  labs(x = "Treatment", y = "Grade", title = "Day 00 Ultrasound Grade")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12)) ###########scatter plot - not best visual
+####let's try a box plot - where grade is numeric
+ggplot(data = VA_data, aes(x = treatment, y = as.numeric(as.character(grade_01)), fill = treatment))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Treatment", y = "Grade", title = "Day 00 Ultrasound Grade")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99", "#CC9933"))+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV", "F" = "Pourya's"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggdotplot(VA_data, x = "frog_code", y = "grade_01", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Grade", title = "Ultrasound Grade on Day00")
+
+################# Ultrasound grade by age ##############
+ggplot(data = VA_data, aes(x = age, y = grade_01, colour = treatment, scales = "free_x"))+
+  geom_jitter(size = 2)+
+  facet_grid(~birth_type)+
+  labs(x = "Age (yrs)", y = "Follicular Grade", title = "Day 00 Ultrasound Grade")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99", "#CC9933"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(data = VA_data, aes(x = age, y = grade_01, colour = birth_type))+
+  geom_jitter(size = 2, alpha = 0.7)+
+  labs(x = "Age (yrs)", y = "Follicular Grade", title = "Day 00 Ultrasound Grade of VA OSF in 2022")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99", "#CC9933"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggdotplot(VA_data, x = "age", y = "grade_01", facet.by = "treatment")+
+  labs(x = "Age (yrs)", y = "Follicular grade", title = "Ultrasound Grade on Day00")
+
+###################################################################################
+############### Amplexus behaviours by ultrasound grade1 (day 00)##################
+###################################################################################
+#using VA_noF dataframe because F group does not have measured amplexus behaviours
+#####start with time to first contact
+ggplot(data = VA_noF, aes(x = grade_01, y = to_first, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Time until first contact")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+#facet grid by treatment
+ggplot(data = VA_noF, aes(x = grade_01, y = to_first, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Time until first contact")+
+  scale_x_discrete()
+#### hrs apx #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = hrs_apx, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Total time in amplexus")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = hrs_apx, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Total time in amplexus")+
+  scale_x_discrete()
+#### touch duration #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_tch_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Touch Phase Duration")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_tch_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Touch Phase Duration")+
+  scale_x_discrete()
+#### attempt duration #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_atmp_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Attempt Phase Duration")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_atmp_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Attempt Phase Duration")+
+  scale_x_discrete()
+#### successful duration #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_suc_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Successful Phase Duration")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = avg_suc_dur, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Successful Phase Duration")+
+  scale_x_discrete()
+#### total number of amplectants #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = tot_num_amplex, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Total number of amplectants")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = tot_num_amplex, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Total number of amplectants")+
+  scale_x_discrete()
+#### number of successful amplectants #####################################################
+ggplot(data = VA_noF, aes(x = grade_01, y = tot_num_suc, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Number of successful amplectants")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                            "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#
+ggplot(data = VA_noF, aes(x = grade_01, y = tot_num_suc, fill=grade_01))+
+  geom_boxplot(show.legend = FALSE)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", y = "Time (hrs)", title = "Number of successful amplectants")+
+  scale_x_discrete()
+
+
+#### ultrasound grade01 by status #####################################################
+ggplot(data = VA_noF, aes(x = status, y = as.numeric(as.character(grade_01)), fill=status))+
+  geom_boxplot(alpha = 0.5, show.legend = FALSE)+
+  labs(x = "Final Status", y = "Follicular Grade", title = "Day 01 follicular grade to final status")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  scale_x_discrete(labels=c("OK" = "Other (no mature eggs)", "ER" = "Egg retention",
+                            "EB" = "Egg bound"))+
+  stat_summary(fun=mean, geom="point", shape=20, size=10, color="black", fill="black")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+######not sure how I feel about below graph - showing follicular grade by status on bubble
+ggplot(data = VA_data, aes(x = status, y = treatment, colour = treatment))+
+  geom_count(aes(size =..prop..), colour = "lightgrey")+
+  geom_count(alpha = 0.7, aes(size = ..prop.., group = treatment))+
+  labs(x = "Status", y = "Treatment", title = "Final Status per Treatment")+
+  theme_classic()+
+  scale_fill_manual(values = c("#9933CC","#006633", "#006699", "#FF9933", "#33CC99", "#CC9933"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+#try box plot instead
+ggplot(VA_data, aes(x = treatment, fill = status))+
+  geom_bar(alpha = 0.5)+
+  labs(x = "Treatment", title = "Number of egg bound per treatment")+
+  theme_classic()+
+  scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
+                            "HV" = "H + V", "PHV" = "Physical + HV", "F" = "Pourya's"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+####### bar chart of status by age ##########
+ggplot(VA_data, aes(x = age, fill = status))+
+  geom_bar(alpha = 0.5)+
+  labs(x = "Age (yrs)", title = "Impact of age on final status")+
+  theme_classic()+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggplot(VA_data, aes(x = age, fill = status))+
+  geom_bar(alpha = 0.5)+
+  facet_grid(~birth_type)+
+  labs(x = "Age (yrs)", title = "Number of egg bound by birth type")+
+  theme_classic()+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+### age ~ mass relationship - "you must be this mass to breed" 
+ggplot(data = VA_noF, aes(x = as.factor(age), y = mass_spr, fill=birth_type))+
+  geom_boxplot(alpha = 0.5)+
+  labs(x = "Age (yrs)", y = "Mass (g)", title = "Spring mass of VanAqua females")+
+  theme_classic()+
+  theme(legend.title = element_blank())+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+########### grade01 ~ status relationship with or without facet by birth type ######
+###### does particular day 00 grade predict egg binding down the road? #############
+
+################### Set nice colour scheme for ppt plots #############
+library(devtools)
+devtools::install_github('Mikata-Project/ggthemr')
+library(ggthemr)
+ggthemr('dust')
+
+lighten_swatch(0.2)
+ggplot(VA_data, aes(x = grade_01, fill = status))+
+  geom_bar(alpha = 0.5)+
+  labs(x = "Follicular Grade", title = "Does Follicular Grade Predict Final Status?")+
+  theme_classic()+
+  theme(panel.background = element_rect(fill = "#F6F0ED"), 
+        plot.background = element_rect(fill = "#F6F0ED"), 
+        legend.background = element_rect(fill = "#F6F0ED"),
+        legend.box.background = element_rect(fill = "#F6F0ED"))+
+    scale_fill_manual(values = c("#CC0000", "#FF9933", "#663300", "#CC9999"),
+                      labels = c("EB" = "egg bound", "ER" = "egg retention", "OK" = "other"))+
+  scale_y_continuous(breaks = c(2, 4, 6, 8, 10, 12))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+darken_swatch(0.1)
+ggplot(VA_data, aes(x = age, fill = grade_01))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~status)+
+  labs(x = "Age (yrs)")+
+  theme_classic()+
+  theme(panel.background = element_rect(fill = "#F6F0ED"), 
+        plot.background = element_rect(fill = "#F6F0ED"), 
+        legend.background = element_rect(fill = "#F6F0ED"),
+        legend.box.background = element_rect(fill = "#F6F0ED"))+
+  scale_fill_discrete(name = "Follicular Grade")+
+  scale_fill_manual(values = c("#CC0000", "#FF9933", "#663300", "#CC9999"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+
+###### does heavier weight = higher follicular grade on day 00?
+##is size/weight a proxy for males to determine which females are ready to oviposit?
+ggplot(VA_data, aes(x = mass_spr, y = grade_01, colour = status))+
+  geom_point(size = 2) ####no clear pattern but maybe flip axes
+
+ggplot(VA_data, aes(x = grade_01, y = mass_spr, colour = status, fill = NA))+
+  geom_boxplot(alpha = 0.7)+
+  labs(x = "Follicular Grade", y = "Mass (g)", title = "Interaction of mass and follicular grade")+
+  theme_classic()+
+  scale_x_discrete(labels=c("0" = "0: not gravid", "1" = "1: eary gravid", "2" = "2: mid-gravid",
+                            "3" = "3: late gravid"))+
+  theme(panel.background = element_rect(fill = "#F6F0ED"), 
+        plot.background = element_rect(fill = "#F6F0ED"), 
+        legend.background = element_rect(fill = "#F6F0ED"),
+        legend.box.background = element_rect(fill = "#F6F0ED"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+#### expected higher grade to imply higher mass but we do not see this
+  ## HOWEVER ##
+##could be that most of the grade 3's were 3yo females and this is only a mass metric, not SMI
+  # these 3yo females at grade 3 might be much heavier than other 3yo females at lower grade...
+##subset by age
+VA_3 <- subset(VA_data, age == "3")
+
+ggplot(VA_3, aes(x = grade_01, y = mass_spr, colour = status))+
+  geom_boxplot(alpha = 0.7)+
+  labs(x = "Treatment", title = "Interaction of mass and follicular grade")+
+  theme_classic()+
+  scale_x_discrete(labels=c("0" = "0: not gravid", "1" = "1: eary gravid", "2" = "2: mid-gravid",
+                            "3" = "3: late gravid"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+###add a facet by birth type
+ggplot(VA_3, aes(x = grade_01, y = mass_spr, colour = status))+
+  geom_boxplot(alpha = 0.7)+
+  facet_grid(~birth_type)+
+  labs(x = "Follicular Grade", y = "Mass (g)", title = "Interaction of mass and follicular grade")+
+  theme_classic()+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+####we see our three wild caught 2019 females do not differ too much from our captive ones
+# the two WC 2019's who developed mature eggs (grade 2 or 3) 
+# weigh about the same as the grade 2 & 3 captive born frogs
+#### BUT - the wild caught frogs do not become egg bound. They end with egg retention - but do not die
+ggplot(VA_data, aes(x = grade_01, y = mass_spr, colour = status))+
+  geom_boxplot(alpha = 0.7)+
+  facet_grid(~prev_breed)+
+  labs(x = "Follicular Grade", y = "Mass (g)", title = "Previous breeding impact on status")+
+  theme_classic()+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#### see the only two females with previous breeding experience who became EGG BOUND were very high mass
+## were they also old? 
+lighten_swatch(0.3)
+ggplot(VA_data, aes(x = as.factor(age), y = mass_spr, colour = status, fill = NA))+
+  geom_boxplot(alpha = 0.6, size = 0.5)+
+  labs(x = "Age (yrs)", y = "Mass (g)", title = "Is age indicative of mass?")+
+  theme_classic()+
+  scale_fill_discrete(labels = c("EB" = "egg bound", "ER" = "egg retention", "OK" = "other"))+
+  theme(panel.background = element_rect(fill = "#F6F0ED"), 
+        plot.background = element_rect(fill = "#F6F0ED"), 
+        legend.background = element_rect(fill = "#F6F0ED"),
+        legend.box.background = element_rect(fill = "#F6F0ED"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#### we actually see that for the 3yo frogs most of the egg bound ones were lower weight than the ER ones
+##but in older ages we see those two obese frogs who become egg bound
+#subset into 3 age groups (young - adult - old) by adding "maturity" column
+VA_data <- VA_data %>% 
+  mutate(maturity = case_when(age == "3" ~ "young", age == "4" ~"young",
+                              age == "5" ~ "adult", age == "6" ~ "adult", 
+                              age == "7" ~ "adult", age == "8" ~ "old", 
+                              age == "9" ~ "old", age == "10" ~ "old", 
+                              age == "11" ~ "old", age == "12" ~ "old", age == "13" ~ "old")) %>% 
+  relocate(maturity, .after = age)
+VA_data$maturity <- factor(VA_data$maturity, levels = c("young", "adult", "old"), ordered = TRUE)
+str(VA_data)
+view(VA_data)
+# recreate previous graph but now view by maturity instead of age
+ggplot(VA_data, aes(x = maturity, y = mass_spr, colour = status))+
+  geom_boxplot(alpha = 0.7)+
+  labs(x = "Age (yrs)", y = "Mass (g)", title = "Is age indicative of mass?")+
+  theme_classic()+
+  scale_x_discrete(labels=c("young" = "young (3-4)", "adult" = "adult (5-7)", "old" = "old (8+)"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+##### see the trend of low EB mass in young frogs, high mass in older EB frogs more clearly
+
+
+ggboxplot(VA_noF, x = "frog_code", y = "to_first", facet.by = "treatment", scales = "free_x")+
+  labs(x = "Individual females", y = "Time (hrs)", title = "Time to first contact")
+
+
+ggplot(VA_data, aes(x = grade_01, y = mass_spr, colour = status))+
+  geom_point(size = VA_data$age)+
+  labs(x = "Treatment", title = "Number of egg bound per treatment")+
+  theme_classic()+
+  scale_x_discrete(labels=c("0" = "not gravid", "1" = "eary gravid", "2" = "mid-gravid",
+                            "3" = "late gravid"))+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+##### is age more connected to time to first than ultrasound grade ? 
+ggplot(VA_data, aes(x = age, y = to_first, colour = treatment))+
+  geom_jitter(alpha = 0.5)
+##something to above graph but don't know what to make of it yet 
