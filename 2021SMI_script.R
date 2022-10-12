@@ -132,64 +132,51 @@ shapiro.test(prepo$svl_pre21) #nearly normal but not quite
 ##############################################################
 ####linear regressions to predict SVL for VanAqua SUL values #
 ##############################################################
-#### have to redo this with new length measurements from Pourya - Oct 2022 ###
-SULreg <- read.csv("SULregression.csv", header = TRUE) #only VanAqua frogs
-head(SULreg)
-view(SULreg)
-dim(SULreg) #30 rows, 5 columns
-str(SULreg)
-summary(SULreg)
-#eventually hopefully replace these SUL/SVL measurements with ones taken on same day from same individuals in triplicate
-#for now using what we have (as of Sept 2022)
+#### using length measurements taken by Pourya - Oct 2022 ####
+conversion <- read.csv("VA_lenths_oct2022.csv", header = TRUE)
+# convert <- melt(setDT(conversion), id=1:2, measure=patterns("^SUL", "^SVL"),
+#                value.name=c("sul", "svl"), variable.name="rep", na.rm = TRUE)
+#add columns for average SUL and SVL
+conversion$avgSUL <- rowMeans(conversion[ , c(3:5)], na.rm=TRUE)
+conversion$avgSVL <- rowMeans(conversion[ , c(6:8)], na.rm = TRUE)
+conversion <- conversion %>% 
+  relocate(avgSUL, .after = SUL3) %>% 
+  relocate(avgSVL, .after = SVL3)
+view(conversion)
+conversion$frog <- as.factor(conversion$frog)
+str(conversion)
+summary(conversion)
 
-#linear regression of SVL by SUL - to predict SVL from SUL
-lmSVL1 <- lm(SVL_spr2021 ~ SUL_2020, data = SULreg)
-summary(lmSVL1)
+###### Linear regression of SVL by SUL
+linreg <- lm(avgSVL ~ avgSUL, data = conversion)
+summary(linreg)
 
-lmSVL2 <- lm(SVL_Nov2021 ~ SUL_2020, data = SULreg)
-summary(lmSVL2)
-#plot variables again but add regression line
-plot(SVL_spr2021 ~ SUL_2020 , data = SULreg, main = "2021 spring SVL by 2020 SUL") # n=30
-abline(lmSVL1)
-plot(lmSVL1$residuals, pch = 16, col = "red", main = "sprSVL ~ SUL residuals") #plot the residuals - do they look random?
-plot(cooks.distance(lmSVL1), pch = 16, col = "blue", main = "sprSVL ~ SUL cooks distance") #plot cooks distance - see at least one point clearly not following pattern
-#2017 WCEM04-05 has a spring SVL of 57.86mm which is much lower than most others - might be outlier? Check if recorded correctly
+plot(avgSVL ~ avgSUL, data = conversion, main = "Oct 2022 SUL by SVL") # n=24
+abline(linreg)
+plot(linreg$residuals, pch = 16, col = "red", main = "SVL ~ SUL residuals") #plot the residuals - do they look random?
+plot(cooks.distance(linreg), pch = 16, col = "blue", main = "SVL ~ SUL cooks distance") 
 
-plot(SVL_Nov2021 ~ SUL_2020, data = SULreg, main = "2021 fall SVL by 2020 SUL") # n=20
-abline(lmSVL2)
-plot(lmSVL2$residuals, pch = 16, col = "red") #these residuals look random
+# looks like one outlier, maybe two
+identify_outliers(conversion, avgSUL) #frog 10 and 23 are outliers according to SUL
+identify_outliers(conversion, avgSVL) #frog 23 is outlier according to SVL
+# none are extreme outliers and I have verified they are not errors in recording - frog 23 is just very small
+################################################### will leave the outliers because of sample size ##########
 
-#SVL_spr2021 on SUL is the better model, but still not great. 
-#let's see if any transformations improve the model fit
-ggplot(SULreg, aes(SUL_2020, SVL_spr2021))+
-  geom_point()+
-  scale_x_log10() + scale_y_log10() #doesn't look any different
+######## Create equation of model fit using estimates: 
+############# SVL = 1.1957693x - 10.7090655, R2 = 0.6163136 (moderate fit), n=24, p=3.3613e-06 ########
+#######################################################################################################
 
-#try a log transformation on the regression
-lmSVL3 <- lm(log(SVL_spr2021) ~ log(SUL_2020), data = SULreg)
-summary(lmSVL3) #improves the model but only slightly
-plot(log(SVL_spr2021) ~ log(SUL_2020), data = SULreg, main = "2021 spring SVL by 2020 SUL") 
-abline(lmSVL3)
-plot(lmSVL3$residuals, pch = 16, col = "red", main = "sprSVL ~ SUL residuals") 
-plot(cooks.distance(lmSVL3), pch = 16, col = "blue", main = "sprSVL ~ SUL cooks distance") #now we see two influential points...
-
-#using non-transformed regression our equation is: SVL = 0.889x + 5.1677, R2 = 0.4573
-#create predicted SVL column using equation and SUL values from SULreg
-lmSVL1 <- lm(SVL_spr2021 ~ SUL_2020, data = SULreg)
-summary(lmSVL1) #lmSVL1 is our model
-predSVL <- data.frame(SUL_2020 = prepo[43:87, 6]) #turn SUL values into data frame so we can predict their SVL
-predicted <- predict(lmSVL1, newdata = predSVL)
-predSVL <- predSVL %>% 
-  mutate(SUL_SVL = predicted) #predict SVL from previously defined SUL values
-
-####trying to bind GVZ SVL values (rows 1:42) to predicted VA values for 43:87 but not working
-##may need to just edit data in excel and sort out reproducible method later
-
-predSVL2 <- data.frame(SUL_2020 = prepo[43:87, 8]) #turn SUL 2021 values into data frame so we can predict their SVL
-predicted21 <- predict(lmSVL1, newdata = predSVL2)
-predSVL <- predSVL %>% 
-  mutate(SUL21_SVL = predicted21) #added column of predicted 2021 SUL values from VanAqua
-view(predSVL) #### don't think this looks right but might not be needed?
+## try again with frog 10 and 23 removed as outliers
+conv_outliers <- conversion %>% 
+  filter(frog != "10")%>% 
+  filter(frog != "23")
+view(conv_outliers)
+lm.out <- lm(avgSVL ~ avgSUL, data = conv_outliers)
+summary(lm.out)
+plot(avgSVL ~ avgSUL, data = conv_outliers, main = "Oct 2022 SUL by SVL") # n=24
+abline(lm.out)
+##### This looks worse. more spread in data. R2 and p have gotten worse
+##### stick with outliers included. not actual outliers just limited sample size
 
 #subset prepo data frame by populations: GVZ, VA
 prepo.GVZ <- subset(prepo, pop == "GVZ")
@@ -452,7 +439,7 @@ summary(VA_age)
 #SVL = 0.889x + 5.1677, R2 = 0.4573
 SULconvert <- #set function for SUL to SVL conversion
   function(x) {
-    0.889 * x + 5.1677
+    1.1957693 * x - 10.7090655
   }
 
 VA_age$svl <- SULconvert(VA_age$sul) #new column of converted svl values
@@ -468,19 +455,19 @@ ggqqplot(VA_age$svl, na.rm = TRUE)
 shapiro.test(VA_age$mass) #significant = not normal
 shapiro.test(VA_age$svl) #significant = not normal
 ######neither are normal but have large sample size (n=444 total observations)
-######samples are not independent because we have multiple measurements per individual frog
+######samples are not independent because we have multiple (repeated) measurements per individual frog
 
 #####subset data for adults (>2 years old)
 #SMI should standardize for age but want to look at normality of data as is
 VA_adults <- VA_age %>% 
   filter(age != 0 & age != 1) #exclude frogs at 0 and 1 yrs
 view(VA_adults)
-str(VA_adults) #n=263, still have all 144 individual frogs though
+str(VA_adults) #n=262, still have all 144 individual frogs though
 
 VA_adults2 <- VA_adults %>% #exclude 0-2 years old. technically "maturity" is reached after 2yrs
   filter(age != 2)
 view(VA_adults2)
-str(VA_adults2) #n=168 obs, still 144 frogs
+str(VA_adults2) #n=167 obs, still 144 frogs
 
 #view their distribution
 hist(VA_adults$mass)
@@ -534,15 +521,15 @@ abline(lm(log.mass ~ log.svl, data = VA_EB), col = "red")
 summary(lm(log.mass ~ log.svl, data = VA_EB))
 abline(lm(log.mass ~ log.svl, data = VA_OK), col = "blue")
 summary(lm(log.mass ~ log.svl, data = VA_OK))
-legend("bottomright", title = "Regression lines", c("n=434, Adjusted R-squared: 0.908, p-value: 2.2e-16",
-                                                    "n=158, Adjusted R-squared: 0.9285, p-value: 2.2e-16",
-                                                    "n=276, Adjusted R-squared: 0.898, p-value: 2.2e-16"),
+legend("bottomright", title = "Regression lines", c("n=434, Adjusted R-squared: 0.906, p-value: 2.2e-16",
+                                                    "n=158, Adjusted R-squared: 0.9264, p-value: 2.2e-16",
+                                                    "n=276, Adjusted R-squared: 0.897, p-value: 2.2e-16"),
        fill = c('black', 'red', 'blue'), cex = 0.7)
 title("Log of MbyL for VA dataset")
 
 ##############################adults vs young
 #already have VA_adults2 for >2 year old frogs
-str(VA_adults2) #n=168
+str(VA_adults2) #n=167
 VA_0 <- subset(VA_age, age == "0")
 str(VA_0) #n=75
 VA_1 <- subset(VA_age, age == "1")
@@ -579,7 +566,7 @@ legend("topleft", title = "Regression lines", c("n=444, Adjusted R-squared: 0.76
                                                 "n=168, Adjusted R-squared: 0.7582, p-value: 2.2e-16",
                                                 "n=75, Adjusted R-squared: 0.7657, p-value: 2.2e-16",
                                                 "n=106, Adjusted R-squared: 0.7274, p-value: 2.2e-16",
-                                                "n=95, Adjusted R-squared: 0.3358, p-value: 2.2e-16"),
+                                                "n=95, Adjusted R-squared: 0.3368, p-value: 2.2e-16"),
        fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
 title("MbyL by age at VA")
 
@@ -609,11 +596,11 @@ abline(lm(log.mass ~ log.svl, data = VA_2), col = "purple")
 summary(lm(log.mass ~ log.svl, data = VA_2))
 abline(lm(log.mass ~ log.svl, data = VA_adults2), col = "blue")
 summary(lm(log.mass ~ log.svl, data = VA_adults2))
-legend("bottomright", title = "Regression lines", c("n=444, Adjusted R-squared: 0.908, p-value: 2.2e-16", 
-                                                    "n=168, Adjusted R-squared: 0.7822, p-value: 2.2e-16",
-                                                    "n=75, Adjusted R-squared: 0.8466, p-value: 2.2e-16",
-                                                    "n=106, Adjusted R-squared: 0.8133, p-value: 2.2e-16",
-                                                    "n=95, Adjusted R-squared: 0.4034, p-value: 2.2e-16"),
+legend("bottomright", title = "Regression lines", c("n=444, Adjusted R-squared: 0.906, p-value: 2.2e-16", 
+                                                    "n=168, Adjusted R-squared: 0.7699, p-value: 2.2e-16",
+                                                    "n=75, Adjusted R-squared: 0.8214, p-value: 2.2e-16",
+                                                    "n=106, Adjusted R-squared: 0.8183, p-value: 2.2e-16",
+                                                    "n=95, Adjusted R-squared: 0.4105, p-value: 2.2e-16"),
        fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
 title("Log of MbyL by age at VA")
 
@@ -796,18 +783,18 @@ ScaledMassIndex.tz <-
 
 ### calculate bsma for VA from VA_age dataset - best MbyL regression for VA data (most full dataset)
 sma(VA_age$log.mass ~ VA_age$log.svl) #use log #the slope of the estimate is the bsma 
-VA.bsma <- 3.949900
+VA.bsma <- 2.80075
 #check if different if just using VA adults
 sma(VA_adults2$log.mass ~ VA_adults2$log.svl)
-VA.a.bsma <- 3.202558
+VA.a.bsma <- 2.51069
 #wild bsma was 3.0312
-#bsma from VA adults is closer to this and closer to slope of 3 in general (3 supposed to be best?)
+#bsma from VA is closer to this and closer to slope of 3 in general (3 supposed to be best?)
 ########################
 #calculate Lo
 Lo.VA <- mean(VA_age$svl, na.rm = TRUE)
-Lo.VA #55.09706
+Lo.VA #56.4495
 Lo.VA.a <- mean(VA_adults2$svl, na.rm = TRUE)
-Lo.VA.a #64.98735
+Lo.VA.a #69.6645322
 #wild Lo was 71.3709 - but the Lo should be arbitrary
 
 ########Create new SMI functions for new bsma using old Lo (from wild population)
@@ -850,9 +837,10 @@ ggplot(data = VA_age, aes(x = as.factor(age), y = SMI, fill=factor(age)))+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
-## graphing above with SMI.w or SMI.va shows how SMI is not standardized - it changes over age. should be fairly consistent
-## thought that the VA bsma from only adults should have been used because it was from the best regression (R closest to 3)
-## but graphing/visualizing woudl suggest otherwise. Stick with using full VA dataset for bsma and SMI calculations
+## graphing above with SMI.w actually looks more standardized than SMI
+## SMI (using own bsma) changes slightly over age. should be fairly consistent. SMI.va shows huge variation
+## could reflect actual SMI changes in frogs as they age at VA though
+## Stick with using full VA dataset for bsma and SMI calculations
 
 ggboxplot(VA_age %>% filter(!is.na(maturity)), x = "EB", y = "SMI", facet.by = "maturity")+
   labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status at VanAqua")+
@@ -1035,7 +1023,7 @@ ggplot(data = full_pp, aes(x = population, y = SMI, fill=EB))+
 
 ### use combine_prepo to compare EB vs OK in GVZ vs VA over fall '20 and spring '21
 ### this still includes both their 2022 EB deaths as well... need to remove or look at without ?
-str(combine_prepo) #261 obs from just GVZ and VA
+str(combine_prepo) #217 obs from just GVZ and VA
 combine_prepo$season <- as.factor(combine_prepo$season)
 combine_prepo <- combine_prepo %>% 
   mutate(when = case_when(grepl("pre", season) ~ "fall", grepl("post", season) ~ "spring")) %>% 
@@ -1278,26 +1266,6 @@ ggplot(data = EB_comp, aes(x = age_mass, y = mass, fill=status))+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
 
-## subset plot so I can introduce pieces one at a time ##
-EB_VA <- subset(EB_comp, pop == "VA")
-EB_TZ <- subset(EB_comp, pop == "TZ")
-ggplot(data = EB_TZ, aes(x = age_mass, y = mass, fill=status))+
-  geom_boxplot()+
-  labs(x = "Age (yrs)", y = "Mass (g)", title = "Mass Changes with Age", subtitle = "Vancouver Aquarium and Toronto Zoo")+
-  theme_classic()+
-  theme(panel.background = element_rect(fill = "#F6F0ED"), 
-        plot.background = element_rect(fill = "#F6F0ED"), 
-        legend.background = element_rect(fill = "#F6F0ED"),
-        legend.box.background = element_rect(fill = "#F6F0ED"))+
-  scale_fill_manual(name = "Pop Status", 
-                    labels = c("EB.tz" = "EB at TZ", "OK.tz" = "OK at TZ"),
-                    values = c("#663300", "#CC9933"))+
-  theme(legend.position = "right")+
-  ylim(0, 150)+
-  theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
-####can't figure out how to make scales the same. bummer. next time. ################
-
 #### trying to figure out how to make this a scatter plot and add curved lines? 
 ## or even just leave as box plots but show all four facets
 plot(mass.clean$age_mass, mass.clean$mass, pch = 16, cex = 1.3,
@@ -1442,8 +1410,8 @@ qqnorm(full_21$SMI) #looking for straight line
 #Shapiro Wilks test: null hypothesis = variance of data is normally distributed
 #check by population
 shapiro.test(subset(full_21, population == "GVZ")$SMI) # p-value: 2.918e-05
-shapiro.test(subset(full_21, population == "TZ")$SMI) # p-value: 0.6497
-shapiro.test(subset(full_21, population == "VA")$SMI) # p-value: 0.0002709
+shapiro.test(subset(full_21, population == "TZ")$SMI) # p-value: 0.7690
+shapiro.test(subset(full_21, population == "VA")$SMI) # p-value: 0.00131
 shapiro.test(subset(full_21, population == "wild")$SMI) # p-value: 0.5215
 # TZ and wild are normal (p > 0.05) but GVZ and VA are not.
 # TZ n=9, wild n=45, GVZ n=41, VA n=15
@@ -1456,7 +1424,7 @@ hist(full_21$log.SMI) #looks slightly better
 qqnorm(full_21$log.SMI) #better but still not great
 shapiro.test(subset(full_21, population == "GVZ")$log.SMI) # p-value: 0.001568
 shapiro.test(subset(full_21, population == "TZ")$log.SMI) # p-value: 0.942
-shapiro.test(subset(full_21, population == "VA")$log.SMI) # p-value: 0.01761
+shapiro.test(subset(full_21, population == "VA")$log.SMI) # p-value: 0.0185
 shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
 ###  GVZoo and VA are still not normal - but much closer than they were. 
 # GVZoo has highest sample size of other zoos
@@ -1469,7 +1437,7 @@ shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
 
 plot(log.SMI~population, data = full_21)
 bartlett.test(log.SMI~population, data = full_21)
-# p-value: 1.968e-05 - reject the null hypothesis
+# p-value: 0.01033 - barely reject the null hypothesis
 # the variance is not homogenous so we cannot proceed to ANOVA
 # Alternative tests are Welch-ANOVA or Kruskal-Wallis
 # Kruskal-Wallis does not require normality or homoscedasticity of variances
@@ -1478,7 +1446,7 @@ bartlett.test(log.SMI~population, data = full_21)
 #####################################################################################################
 # Kruskal-Wallis
 kruskal.test(SMI~population, data = full_21)
-# chi-squared = 64.681, p-value = 5.868e-14
+# chi-squared = 54.5109, p-value = 8.730576e-12
 # p < 0.05 so we reject the null hypotheses of all mean SMI being equal between populations
 # but we still do not know WHICH population means differ - just know at least one is different
 
@@ -1528,7 +1496,7 @@ shapiro.test(subset(full_21, pop == "MS")$SMI) # p-value: 0.9052 (n=25)
 shapiro.test(subset(full_21, pop == "MV")$SMI) # p-value: 0.07682 (n=13)
 shapiro.test(subset(full_21, pop == "GVZ")$SMI) # p-value: 2.918e-05 (n=41)
 shapiro.test(subset(full_21, pop == "TZ")$SMI) # p-value: 0.769 (n=9)
-shapiro.test(subset(full_21, pop == "VA")$SMI) # p-value: 0.0002709 (n=15)
+shapiro.test(subset(full_21, pop == "VA")$SMI) # p-value: 0.001311 (n=15)
 ## GVZ and VA are not normal - others are.
 # try with transformed data
 shapiro.test(subset(full_21, pop == "CH")$log.SMI) # p-value: 0.1226
@@ -1536,21 +1504,21 @@ shapiro.test(subset(full_21, pop == "MS")$log.SMI) # p-value: 0.7896
 shapiro.test(subset(full_21, pop == "MV")$log.SMI) # p-value: 0.4164
 shapiro.test(subset(full_21, pop == "GVZ")$log.SMI) # p-value: 0.001568
 shapiro.test(subset(full_21, pop == "TZ")$log.SMI) # p-value: 0.942
-shapiro.test(subset(full_21, pop == "VA")$log.SMI) # p-value: 0.01761
+shapiro.test(subset(full_21, pop == "VA")$log.SMI) # p-value: 0.0185
 ## GVZ and VA are closer but still not normal
 
 # Test variance. Null hypothesis of bartlett: variance is equal
 plot(log.SMI~pop, data = full_21) #a few potential outliers but sample sizes too low to remove
 bartlett.test(log.SMI~pop, data = full_21) 
-## p-value = 1.966e-06 means reject the null so variance is not homogenous. Cannot use ANOVA
+## p-value = 0.00102 means reject the null so variance is not homogenous. Cannot use ANOVA
 
 kruskal.test(SMI~pop, data = full_21)
-# chi-squared = 68.484, p-value = 2.118e-13 (reject the null - mean SMI are not equal)
+# chi-squared = 58.768, p-value = 2.1833e-11 (reject the null - mean SMI are not equal)
 
 # Post hoc: Dunn Test 
 dunnTest(SMI~pop, data = full_21, method = "holm")
-# specifically intereted in significant differences between wild populations (CH, MS, MV)
-## CH-MS not significant (p: 0.719), CH-MV not significant (p: 0.579), MS-MV not significant (p: 0.396)
+# specifically interested in significant differences between wild populations (CH, MS, MV)
+## CH-MS not significant (p: 0.982), CH-MV not significant (p: 1.00), MS-MV not significant (p: 0.307)
 ## interestingly we also see few sig. diffs between wild pops and GVZ and TZ. 
 ### is this different when using full (2012-2022) wild dataset - compared to just 2021 captures? 
 ggbetweenstats(
@@ -1617,56 +1585,40 @@ qqnorm(full_s$SMI) # quite sloped
 
 #Shapiro Wilks test: null hypothesis = variance of data is normally distributed
 shapiro.test(subset(full_f, population == "GVZ")$SMI) # p-value: 0.0172 (n=84) (not normal)
-shapiro.test(subset(full_f, population == "VA")$SMI) # p-value: 9.788e-06 (n=90) (not normal)
+shapiro.test(subset(full_f, population == "VA")$SMI) # p-value: 6.156e-05 (n=90) (not normal)
 
 shapiro.test(subset(full_s, population == "GVZ")$SMI) # p-value: 4.499e-05 (n=42) (not normal)
-shapiro.test(subset(full_s, population == "VA")$SMI) # p-value: 0.0005945 (n=45) (not normal)
+shapiro.test(subset(full_s, population == "VA")$SMI) # p-value: 0.00266 (n=45) (not normal)
 shapiro.test(subset(full_s, population == "TZ")$SMI) # p-value: 0.769 (n=9) (normal)
 shapiro.test(subset(full_s, population == "wild")$SMI) # p-value: 2.533e-10 (n=502) (not normal)
 # try transformed data
 shapiro.test(subset(full_f, population == "GVZ")$log.SMI) # p-value: 0.2964
-shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.02159
+shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.0234
 
 shapiro.test(subset(full_s, population == "GVZ")$log.SMI) # p-value: 0.002292
-shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.02159
+shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.0234
 shapiro.test(subset(full_s, population == "TZ")$log.SMI) # p-value: 0.942
 shapiro.test(subset(full_s, population == "wild")$log.SMI) # p-value: 0.0007522
 ## closer but still not normal for most
 
 plot(log.SMI~population, data = full_f) #a few potential outliers but not bad
 plot(log.SMI~population, data = full_s) # a couple outliers in VA but less sample size here
-bartlett.test(log.SMI~population, data = full_f) #p-value: 0.7099 (= homogenous variance)
-bartlett.test(log.SMI~population, data = full_s) #p-value: 0.01313 (= not homogenous)
-## even though variance was homogenous in fall group, most of the data was not normal so let's stick with KW test
+bartlett.test(log.SMI~population, data = full_f) #p-value: 0.91111 (= homogenous variance)
+bartlett.test(log.SMI~population, data = full_s) #p-value: 0.5000 (= homogenous)
+## even though variance was homogenous, most of the data was not normal so let's stick with KW test
 kruskal.test(SMI~population, data = full_f)
-# chi-squared = 10.235, p-value = 0.001378 so we (barely) reject the null
+# chi-squared = 0.0352, p-value = 0.8511 so we accept the null
 kruskal.test(SMI~population, data = full_s)
-# chi-squared = 68.652, p-value = 8.295e-15 so we reject the null
+# chi-squared = 65.348, p-value = 4.226e-14 so we reject the null
 
-# only have two groups to compare in full_f so we have to do a student t-test
-library(rstatix)
-# we know we have homogenous variance between groups so we can use a normal t-test (alternative would be Welch's t-test)
-ttest <- t.test(SMI~population, data = full_f, var.equal = TRUE) #to do Welch's, you remove var.equal (default is FALSE)
-ttest
-## t = -3.0263, df = 160, p-value = 0.002885
-## significant, meaning the mean SMI differ significantly
-cohens_d(SMI ~ population, data = full_f, var.equal = TRUE) #calculating effect size - dividing mean diff by pooled standard deviation
-### effsize: -0.476, magnitude: small
-## should I be using Hedge's Corrected version of Cohen's d?
-stat.test <- full_f %>% 
-  t_test(SMI ~ population) %>%
-  add_significance()
-stat.test
-# Create a box-plot with significance
-bxp <- ggboxplot(
-  full_f, x = "population", y = "SMI", 
-  ylab = "Scaled Mass Index", xlab = "Population", add = "jitter"
-)
-# Add p-value and significance levels
-stat.test <- stat.test %>% add_xy_position(x = "population")
-bxp + 
-  stat_pvalue_manual(stat.test, tip.length = 0) +
-  labs(subtitle = get_test_label(stat.test, detailed = TRUE))
+##compare with anova
+aov.21f <- aov(SMI~population, data = full_f) 
+summary(aov.21f)# p-value: 0.8978
+aov.21s <- aov(SMI~population, data = full_s)
+summary(aov.21s) # p-value: 2.22e-16
+######### accept the null for fall - meaning there are no significant differences
+
+library(rstatix) #had this for previous tests that were removed... still need? 
 
 ##### for full_s group we have >2 groups so we can do regular Dunn Test
 dunnTest(SMI~population, data = full_s, method = "holm")
@@ -1699,16 +1651,16 @@ EB21_f$log.SMI <- log(EB21_f$SMI)
 EB21_s$log.SMI <- log(EB21_s$SMI)
 
 #Bartlett by EB status (could use an F test for homogeneity... is this better for only 2 samples?)
-bartlett.test(SMI~EB, data = EB21_f) #p = 0.2953 (homogenous)
-bartlett.test(SMI~EB, data = EB21_s) #p = 0.5568 (homogenous)
-bartlett.test(SMI~pop, data = EB21_f) #p = 0.08169 (homogenous)
-bartlett.test(SMI~pop, data = EB21_s) #p = 1.789e-13 (NOT homogenous...)
+bartlett.test(SMI~EB, data = EB21_f) #p = 0.5346 (homogenous)
+bartlett.test(SMI~EB, data = EB21_s) #p = 0.5867 (homogenous)
+bartlett.test(SMI~pop, data = EB21_f) #p = 0.7781 (homogenous)
+bartlett.test(SMI~pop, data = EB21_s) #p = 0.01746 (NOT homogenous...)
 ### spring variances are not homogenous amongst population groups... shouldn't really use ANOVA for this? 
 
 one.way.f <- aov(SMI~EB, data = EB21_f)
-summary(one.way.f) #p = 0.161 ### accept the null. not significantly different
+summary(one.way.f) #p = 0.709 ### accept the null. not significantly different
 one.way.s <- aov(SMI~EB, data = EB21_s)
-summary(one.way.s) #p= 0.125 ### accept the null. not significantly different
+summary(one.way.s) #p= 0.136 ### accept the null. not significantly different
 
 ## try one-way using pop as independent
 one.f.pop <- aov(SMI ~ pop, data = EB21_f)
@@ -1733,14 +1685,14 @@ aictab(model.set.f, modnames = model.names)
 # look at summary of best model (interaction)
 summary(interaction.f)
 
-##### can see pop and EB:pop both explain a significant amount of the variation (**)
+##### can see only EB:pop explains a significant amount of the variation (*)
 ##### need to do post hoc to see which levels are different from one another 
 ############# Tukey's Honestly-Significant-Difference (TukeyHSD) test ##############
 TukeyHSD(interaction.f)
 # look for p < 0.05 to indicate groups with significant differences
-## We see: VA-GVZ (**), 0:VA-0:GVZ (**), 1:VA-0:GVZ (*), 0:VA-1:GVZ (**)
-##### Most interesting is egg bound (0) females at VA significantly differ in SMI from those at GVZoo.
+## We see NO significant differences, even in the EB:pop - though this is supposed to explain a sig part of variance
 ##### and, there are no within-pop significant differences. Aka egg bound and other within a pop are not significantly different
+## So does EB:pop really even explain variance? Does it just explain more than either pop or EB alone?
 
 #plot the interaction model's post hoc results
 tukey.plot.aov<-aov(SMI ~ EB:pop, data=EB21_f)
@@ -1753,7 +1705,7 @@ model.names <- c("one way EB", "one way pop", "two way", "interaction")
 aictab(model.set.s, modnames = model.names)
 # best fit model: one-way pop
 summary(one.s.pop)
-# p-value: 1.31e-12 (***) no need for post-hoc 
+# p-value: 2.2317e-10 (***) no need for post-hoc 
 
 #################################### Future thought: look at each pop and use season as independent variable #
 
@@ -1771,19 +1723,19 @@ VA_age$log.SMI <- log(VA_age$SMI)
 hist(VA_age$log.SMI) #a nice bell curve!
 qqnorm(VA_age$log.SMI)
 
-shapiro.test(subset(VA_age, age == "0")$SMI) # p-value: 1.264e-14
-shapiro.test(subset(VA_age, age == "1")$SMI) # p-value: 8.803e-13
-shapiro.test(subset(VA_age, age == "2")$SMI) # p-value: 0.002996
-shapiro.test(subset(VA_age, age == "3")$SMI) # p-value: 2.66e-07
-shapiro.test(subset(VA_age, age == "4")$SMI) # p-value: 0.004647
-shapiro.test(subset(VA_age, age == "5")$SMI) # p-value: 0.1254 (normal)
-shapiro.test(subset(VA_age, age == "6")$SMI) # p-value: 0.2591 (normal)
-shapiro.test(subset(VA_age, age == "7")$SMI) # p-value: 0.0484
-shapiro.test(subset(VA_age, age == "8")$SMI) # p-value: 0.9503 (normal)
-shapiro.test(subset(VA_age, age == "9")$SMI) # p-value: 0.3323 (normal)
+shapiro.test(subset(VA_age, age == "0")$SMI) # p-value: 5.864e-15
+shapiro.test(subset(VA_age, age == "1")$SMI) # p-value: 1.528e-14
+shapiro.test(subset(VA_age, age == "2")$SMI) # p-value: 0.00826
+shapiro.test(subset(VA_age, age == "3")$SMI) # p-value: 6.781e-07
+shapiro.test(subset(VA_age, age == "4")$SMI) # p-value: 0.004899
+shapiro.test(subset(VA_age, age == "5")$SMI) # p-value: 0.3218 (normal)
+shapiro.test(subset(VA_age, age == "6")$SMI) # p-value: 0.4897 (normal)
+shapiro.test(subset(VA_age, age == "7")$SMI) # p-value: 0.0290
+shapiro.test(subset(VA_age, age == "8")$SMI) # p-value: 0.9422 (normal)
+shapiro.test(subset(VA_age, age == "9")$SMI) # p-value: 0.2777 (normal)
 #### about half are normal and half are not. older age groups seem to be normal. 
 #### smaller age groups have bigger sample size though
-shapiro.test(subset(VA_age, EB == "0")$SMI) # p-value: 5.328e-11
+shapiro.test(subset(VA_age, EB == "0")$SMI) # p-value: 7.414e-10
 shapiro.test(subset(VA_age, EB == "1")$SMI) # p-value: <2.2e-16
 ## neither of these are anywhere near normal
 
@@ -1792,16 +1744,16 @@ plot(SMI ~ EB, data = VA_age) ## lots of spread
 VA_outliers <- VA_age %>% 
   group_by(age) %>% 
   identify_outliers("SMI")
-view(VA_outliers) # 9 extreme outliers
+view(VA_outliers) # 8 extreme outliers
 ### these outliers are mostly young ages... could be mix-up of year recorded or mix up btw frogs... 
 EB_outliers <- VA_age %>% 
   group_by(EB) %>% 
   identify_outliers("SMI")
-view(EB_outliers) # 16 "extreme outliers" - mix of EB and not
+view(EB_outliers) # 8 "extreme outliers" - mostly not egg bound (6:2)
 ### test out with and without outliers 
 
-bartlett.test(SMI ~ age, data = VA_age) #p-value: 3.134e-15
-bartlett.test(SMI ~ EB, data = VA_age) #p-value: 3.024e-06
+bartlett.test(SMI ~ age, data = VA_age) #p-value: 3.5903e-14
+bartlett.test(SMI ~ EB, data = VA_age) #p-value: 3.3311e-08
 ### variance is not equal. So we cannot use ANOVA. Friedman test is the nonparametric alternative
 ## but our blocks are incomplete... use Skillings-Mack test insead
 # for un-balanced two-way block designs
