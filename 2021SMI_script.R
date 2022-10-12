@@ -928,7 +928,7 @@ ggboxplot(full_21, x = "EB", y = "SMI", facet.by = "population")+
 ####################################################################################################
 prepo.long <- prepo[, c(1:5, 7:8, 10:12)]
 prepo.l <- melt(setDT(prepo.long), id=1:4, measure=patterns("^mass", "^svl"),
-                value.name=c("mass", "svl"), variable.name="when", na.rm = FALSE)
+                value.name=c("mass", "svl"), variable.name="when", na.rm = TRUE)
 prepo.l <- prepo.l %>% 
   mutate(season = case_when(when == "1" ~ "pre20", when == "2" ~ "post21", when == "3" ~ "pre21")) %>%
   relocate(season, .after = EB) 
@@ -941,8 +941,8 @@ prepo.va <- subset(prepo.l, pop == "VA")
 
 prepo.gvz$SMI <- ScaledMassIndex.gvz(prepo.gvz$svl, prepo.gvz$mass)
 prepo.va$SMI <- ScaledMassIndex.VA(prepo.va$svl, prepo.va$mass)
-view(prepo.gvz) #n=126
-view(prepo.va) #n=135
+view(prepo.gvz) #n=122
+view(prepo.va) #n=95
 ###### combine these two datasets, now with their proper respective SMI's
 combine_prepo <- rbind(prepo.gvz, prepo.va)
 
@@ -963,7 +963,7 @@ wild.move <- wild.move %>%
   relocate(birth_yr, .after = pop)
 
 ###want to add TZ data for spring 2021 as well. Grab TZ data from SMI_zoos.TZ
-pp_TZ <- SMI_zoos.TZ[, c(1:2, 4, 7:9, 12)] #######double check this SMI_zoos dataset because it has extra 'X' columns
+pp_TZ <- SMI_zoos.TZ[, c(1:2, 4, 7:9, 12)] 
 #add column to match other datasets 
 pp_TZ$season <- "post21"
 pp_TZ <- pp_TZ %>% 
@@ -985,21 +985,20 @@ full_pp <- full_pp %>%
   relocate(population, .after = pop)
 view(full_pp)
 full_pp$population <- as.factor(full_pp$population)
-full_pp$season <- factor(full_pp$season, labels = c("pre20", "post21", "postbrum", "pre21"), ordered = TRUE)
+full_pp$season <- factor(full_pp$season, levels = c("pre20", "post21", "postbrum", "pre21"), ordered = TRUE)
 str(full_pp)
-dim(full_pp) #772 rows, 10 columns
+dim(full_pp) #728 rows, 10 columns
 
 ###### Plot all together now! ##############################################
 ###########################################################################
 ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   geom_boxplot(show.legend = FALSE)+
   facet_grid(~season)+
-  labs(x = "Population", y = "Scaled Mass Index (g)", title = "seasonal SMI from 2020-2021")+
+  labs(x = "Population", y = "Scaled Mass Index (g)", title = "pre and post-brumation SMI from 2020-2021")+
   theme_classic()+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
-#####TZ should be in the post-21 facet - think GVZoo should be there too... are the facets incorrectly shifted?
 
 ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   geom_boxplot(show.legend = FALSE)+
@@ -1456,7 +1455,7 @@ plot(full_21$log.SMI)
 hist(full_21$log.SMI) #looks slightly better
 qqnorm(full_21$log.SMI) #better but still not great
 shapiro.test(subset(full_21, population == "GVZ")$log.SMI) # p-value: 0.001568
-shapiro.test(subset(full_21, population == "TZ")$log.SMI) # p-value: 0.906
+shapiro.test(subset(full_21, population == "TZ")$log.SMI) # p-value: 0.942
 shapiro.test(subset(full_21, population == "VA")$log.SMI) # p-value: 0.01761
 shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
 ###  GVZoo and VA are still not normal - but much closer than they were. 
@@ -1470,7 +1469,7 @@ shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
 
 plot(log.SMI~population, data = full_21)
 bartlett.test(log.SMI~population, data = full_21)
-# p-value: 2.227e-05 - reject the null hypothesis
+# p-value: 1.968e-05 - reject the null hypothesis
 # the variance is not homogenous so we cannot proceed to ANOVA
 # Alternative tests are Welch-ANOVA or Kruskal-Wallis
 # Kruskal-Wallis does not require normality or homoscedasticity of variances
@@ -1479,7 +1478,7 @@ bartlett.test(log.SMI~population, data = full_21)
 #####################################################################################################
 # Kruskal-Wallis
 kruskal.test(SMI~population, data = full_21)
-# chi-squared = 65.485, p-value = 3.95e-14
+# chi-squared = 64.681, p-value = 5.868e-14
 # p < 0.05 so we reject the null hypotheses of all mean SMI being equal between populations
 # but we still do not know WHICH population means differ - just know at least one is different
 
@@ -1490,8 +1489,8 @@ dunnTest(SMI~population, data = full_21, method = "holm")
 # if last column (adjusted p-value) is < 0.05 then the indicated means differ significantly
 # GVZ - TZ: significant
 # GVZ - VA: significant 
-# TZ - VA: NOT significant = means of VA and TZ do not differ significantly
-# GVZ - wild: p.adj = 3.378e-04 #### significant
+# TZ - VA: NOT significant = means of VA and TZ do not differ significantly (though it is close)
+# GVZ - wild: significant (meaning GVZ is significantly lower)
 # TZ - wild: significant (barely though - much closer than others)
 # VA - wild: significant
 
@@ -1512,8 +1511,308 @@ ggbetweenstats(
   bf.message = FALSE
 )
 
-######### Case 1: SMI ~ age #######
+######### Case 2: SMI ~ wild pop #######
+######## do each of the wild populations (in 2021) significantly differ in SMI? #####
+# Continuous dependent variable: SMI
+# Categorical independent variables: (pop) CH, MS, MV (also GVZ, TZ, VA)
+#Unbalanced design, unequal sample sizes
+
+##################################################################
+# Test assumptions
+hist(full_21$SMI) #long right tail
+qqnorm(full_21$SMI) #quite sloped
+
+#Shapiro Wilks test: null hypothesis = variance of data is normally distributed
+shapiro.test(subset(full_21, pop == "CH")$SMI) # p-value: 0.1877 (n=7)
+shapiro.test(subset(full_21, pop == "MS")$SMI) # p-value: 0.9052 (n=25)
+shapiro.test(subset(full_21, pop == "MV")$SMI) # p-value: 0.07682 (n=13)
+shapiro.test(subset(full_21, pop == "GVZ")$SMI) # p-value: 2.918e-05 (n=41)
+shapiro.test(subset(full_21, pop == "TZ")$SMI) # p-value: 0.769 (n=9)
+shapiro.test(subset(full_21, pop == "VA")$SMI) # p-value: 0.0002709 (n=15)
+## GVZ and VA are not normal - others are.
+# try with transformed data
+shapiro.test(subset(full_21, pop == "CH")$log.SMI) # p-value: 0.1226
+shapiro.test(subset(full_21, pop == "MS")$log.SMI) # p-value: 0.7896
+shapiro.test(subset(full_21, pop == "MV")$log.SMI) # p-value: 0.4164
+shapiro.test(subset(full_21, pop == "GVZ")$log.SMI) # p-value: 0.001568
+shapiro.test(subset(full_21, pop == "TZ")$log.SMI) # p-value: 0.942
+shapiro.test(subset(full_21, pop == "VA")$log.SMI) # p-value: 0.01761
+## GVZ and VA are closer but still not normal
+
+# Test variance. Null hypothesis of bartlett: variance is equal
+plot(log.SMI~pop, data = full_21) #a few potential outliers but sample sizes too low to remove
+bartlett.test(log.SMI~pop, data = full_21) 
+## p-value = 1.966e-06 means reject the null so variance is not homogenous. Cannot use ANOVA
+
+kruskal.test(SMI~pop, data = full_21)
+# chi-squared = 68.484, p-value = 2.118e-13 (reject the null - mean SMI are not equal)
+
+# Post hoc: Dunn Test 
+dunnTest(SMI~pop, data = full_21, method = "holm")
+# specifically intereted in significant differences between wild populations (CH, MS, MV)
+## CH-MS not significant (p: 0.719), CH-MV not significant (p: 0.579), MS-MV not significant (p: 0.396)
+## interestingly we also see few sig. diffs between wild pops and GVZ and TZ. 
+### is this different when using full (2012-2022) wild dataset - compared to just 2021 captures? 
+ggbetweenstats(
+  data = full_21,
+  x = pop,
+  y = SMI,
+  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  plot.type = "box",
+  pairwise.comparisons = TRUE,
+  pairwise.display = "significant",
+  centrality.plotting = FALSE,
+  bf.message = FALSE
+)
+
+######## Case 2b: look at SMI ~ pop for full wild dataset (2012-2022) #######
+############ use wild.move dataframe to compare only wild pops  #############
+# Test assumptions
+hist(wild.move$SMI) #bit of a right tail
+qqnorm(wild.move$SMI) # looks pretty good actually
+wild.move$pop <- as.factor(wild.move$pop)
+summary(wild.move$pop)
+
+shapiro.test(subset(wild.move, pop == "CH")$SMI) # p-value: 0.06311 (n=7)
+shapiro.test(subset(wild.move, pop == "MS")$SMI) # p-value: 0.08684 (n=155)
+shapiro.test(subset(wild.move, pop == "MT")$SMI) # insufficient sample size (n=1)
+shapiro.test(subset(wild.move, pop == "MV")$SMI) # p-value: 7.366e-09 (n=336)
+shapiro.test(subset(wild.move, pop == "ST")$SMI) # p-value: 0.05143 (n=3)
+## everyone but MV are just barely normal - but MV has largest sample size so hard to say how accurate 
+# try with transformed data
+wild.move$log.SMI <- log(wild.move$SMI)
+shapiro.test(subset(wild.move, pop == "CH")$log.SMI) # p-value: 0.2639
+shapiro.test(subset(wild.move, pop == "MS")$log.SMI) # p-value: 0.2468
+shapiro.test(subset(wild.move, pop == "MV")$log.SMI) # p-value: 0.001562 ### this is much closer to normal
+shapiro.test(subset(wild.move, pop == "ST")$log.SMI) # p-value: 0.04512 ### this is actually worse ??
+## Bartlett test
+plot(log.SMI~pop, data = wild.move) # quite a few potential outliers in MS and MV especially - look into this
+wild.noMT <- wild.move %>% 
+  filter(pop != "MT")
+bartlett.test(log.SMI~pop, data = wild.noMT) 
+## p-value = 0.2967 means ACCEPT the null, so variance is homogenous. Proceed to ANOVA
+
+# One-way ANOVA using aov 
+aov_wild <- aov(log.SMI~pop, data = wild.noMT)
+summary(aov_wild)
+# F = 1.776, df = 3, p-value = 0.151
+# Interpretation: p-value is > 0.05 we accept the null hypothesis
+##### There are NO significant differences in SMI mean between our wild populations ###
+########## Interesting contrast to using only 2021 data for wild pops - where we saw sig differences ########
+#############################################################################################################
+
+
+######### Case 3: SMI ~ population + season ####################################
+### SMI of all zoos and combined wild (since no sig diffs were found above) ####
+# Need to subset full_pp dataset by "when" to compare within correct season ####
+full_pp$log.SMI <- log(full_pp$SMI)
+full_f <- subset(full_pp, when == "fall") ### only has SMI from VA (n=80) and GVZ (n=82)
+full_f$population <- factor(full_f$population) #should drop off the extra levels (i.e. TZ and wild)
+levels(full_f$population) #now only have GVZ and VA
+full_s <- subset(full_pp, when == "spring") #GVZ (n=40), TZ (n=9), VA (n=15), wild (n=502)
+hist(full_f$SMI) # looks quite normal 
+hist(full_s$SMI) # right tail
+qqnorm(full_f$SMI) # pretty straight!
+qqnorm(full_s$SMI) # quite sloped
+
+#Shapiro Wilks test: null hypothesis = variance of data is normally distributed
+shapiro.test(subset(full_f, population == "GVZ")$SMI) # p-value: 0.0172 (n=84) (not normal)
+shapiro.test(subset(full_f, population == "VA")$SMI) # p-value: 9.788e-06 (n=90) (not normal)
+
+shapiro.test(subset(full_s, population == "GVZ")$SMI) # p-value: 4.499e-05 (n=42) (not normal)
+shapiro.test(subset(full_s, population == "VA")$SMI) # p-value: 0.0005945 (n=45) (not normal)
+shapiro.test(subset(full_s, population == "TZ")$SMI) # p-value: 0.769 (n=9) (normal)
+shapiro.test(subset(full_s, population == "wild")$SMI) # p-value: 2.533e-10 (n=502) (not normal)
+# try transformed data
+shapiro.test(subset(full_f, population == "GVZ")$log.SMI) # p-value: 0.2964
+shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.02159
+
+shapiro.test(subset(full_s, population == "GVZ")$log.SMI) # p-value: 0.002292
+shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.02159
+shapiro.test(subset(full_s, population == "TZ")$log.SMI) # p-value: 0.942
+shapiro.test(subset(full_s, population == "wild")$log.SMI) # p-value: 0.0007522
+## closer but still not normal for most
+
+plot(log.SMI~population, data = full_f) #a few potential outliers but not bad
+plot(log.SMI~population, data = full_s) # a couple outliers in VA but less sample size here
+bartlett.test(log.SMI~population, data = full_f) #p-value: 0.7099 (= homogenous variance)
+bartlett.test(log.SMI~population, data = full_s) #p-value: 0.01313 (= not homogenous)
+## even though variance was homogenous in fall group, most of the data was not normal so let's stick with KW test
+kruskal.test(SMI~population, data = full_f)
+# chi-squared = 10.235, p-value = 0.001378 so we (barely) reject the null
+kruskal.test(SMI~population, data = full_s)
+# chi-squared = 68.652, p-value = 8.295e-15 so we reject the null
+
+# only have two groups to compare in full_f so we have to do a student t-test
+library(rstatix)
+# we know we have homogenous variance between groups so we can use a normal t-test (alternative would be Welch's t-test)
+ttest <- t.test(SMI~population, data = full_f, var.equal = TRUE) #to do Welch's, you remove var.equal (default is FALSE)
+ttest
+## t = -3.0263, df = 160, p-value = 0.002885
+## significant, meaning the mean SMI differ significantly
+cohens_d(SMI ~ population, data = full_f, var.equal = TRUE) #calculating effect size - dividing mean diff by pooled standard deviation
+### effsize: -0.476, magnitude: small
+## should I be using Hedge's Corrected version of Cohen's d?
+stat.test <- full_f %>% 
+  t_test(SMI ~ population) %>%
+  add_significance()
+stat.test
+# Create a box-plot with significance
+bxp <- ggboxplot(
+  full_f, x = "population", y = "SMI", 
+  ylab = "Scaled Mass Index", xlab = "Population", add = "jitter"
+)
+# Add p-value and significance levels
+stat.test <- stat.test %>% add_xy_position(x = "population")
+bxp + 
+  stat_pvalue_manual(stat.test, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.test, detailed = TRUE))
+
+##### for full_s group we have >2 groups so we can do regular Dunn Test
+dunnTest(SMI~population, data = full_s, method = "holm")
+# all significant except TZ-VA, and GVZ-wild
+
+ggbetweenstats(
+  data = full_s,
+  x = population,
+  y = SMI,
+  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  plot.type = "box",
+  pairwise.comparisons = TRUE,
+  pairwise.display = "significant",
+  centrality.plotting = FALSE,
+  bf.message = FALSE
+)
+
+######### Case 3: SMI ~ population + EB ####################################
+### use combine_prepo dataset to compare EB vs other in VA and GVZoo in 2021 data ####
+# Need to subset by "when" to compare within correct season ####
+EB21_f <- subset(combine_prepo, when == "fall") # GVZ (n=82), VA (n=80); EB (27), OK (135)
+EB21_s <- subset(combine_prepo, when == "spring") # GVZ (n=40), VA (n=15), EB (9), OK (46)
+hist(EB21_f$SMI) # looks quite normal 
+hist(EB21_s$SMI) # right tail
+qqnorm(EB21_f$SMI) # pretty straight!
+qqnorm(EB21_s$SMI) # quite sloped
+
+#Shapiro Wilks test: we know previously data was not normal but was better log transformed 
+EB21_f$log.SMI <- log(EB21_f$SMI)
+EB21_s$log.SMI <- log(EB21_s$SMI)
+
+#Bartlett by EB status (could use an F test for homogeneity... is this better for only 2 samples?)
+bartlett.test(SMI~EB, data = EB21_f) #p = 0.2953 (homogenous)
+bartlett.test(SMI~EB, data = EB21_s) #p = 0.5568 (homogenous)
+bartlett.test(SMI~pop, data = EB21_f) #p = 0.08169 (homogenous)
+bartlett.test(SMI~pop, data = EB21_s) #p = 1.789e-13 (NOT homogenous...)
+### spring variances are not homogenous amongst population groups... shouldn't really use ANOVA for this? 
+
+one.way.f <- aov(SMI~EB, data = EB21_f)
+summary(one.way.f) #p = 0.161 ### accept the null. not significantly different
+one.way.s <- aov(SMI~EB, data = EB21_s)
+summary(one.way.s) #p= 0.125 ### accept the null. not significantly different
+
+## try one-way using pop as independent
+one.f.pop <- aov(SMI ~ pop, data = EB21_f)
+one.s.pop <- aov(SMI ~ pop, data = EB21_s)
+
+## Test some two-way ANOVAs to see which is the best fit (highest F?)
+### two-way ANOVA without interaction
+two.way.f <- aov(SMI ~ EB + pop, data = EB21_f)
+two.way.s <- aov(SMI ~ EB + pop, data = EB21_s)
+### with interaction
+interaction.f <- aov(SMI ~ EB * pop, data = EB21_f)
+interaction.s <- aov(SMI ~ EB * pop, data = EB21_s)
+
+### with blocking interaction not applicable?
+
+## compare fall models using AIC (Akaike information criterion) model selection
+library(AICcmodavg)
+model.set.f <- list(one.way.f, one.f.pop, two.way.f, interaction.f)
+model.names <- c("one way EB", "one way pop", "two way", "interaction")
+aictab(model.set.f, modnames = model.names)
+# lists the model with the best fit first - here it is: interaction
+# look at summary of best model (interaction)
+summary(interaction.f)
+
+##### can see pop and EB:pop both explain a significant amount of the variation (**)
+##### need to do post hoc to see which levels are different from one another 
+############# Tukey's Honestly-Significant-Difference (TukeyHSD) test ##############
+TukeyHSD(interaction.f)
+# look for p < 0.05 to indicate groups with significant differences
+## We see: VA-GVZ (**), 0:VA-0:GVZ (**), 1:VA-0:GVZ (*), 0:VA-1:GVZ (**)
+##### Most interesting is egg bound (0) females at VA significantly differ in SMI from those at GVZoo.
+##### and, there are no within-pop significant differences. Aka egg bound and other within a pop are not significantly different
+
+#plot the interaction model's post hoc results
+tukey.plot.aov<-aov(SMI ~ EB:pop, data=EB21_f)
+tukey.plot.test<-TukeyHSD(tukey.plot.aov)
+plot(tukey.plot.test, las = 1) #can add error bars and mean values in different plot eventually
+
+## let's fit a model to the spring data
+model.set.s <- list(one.way.s, one.s.pop, two.way.s, interaction.s)
+model.names <- c("one way EB", "one way pop", "two way", "interaction")
+aictab(model.set.s, modnames = model.names)
+# best fit model: one-way pop
+summary(one.s.pop)
+# p-value: 1.31e-12 (***) no need for post-hoc 
+
+#################################### Future thought: look at each pop and use season as independent variable #
+
+
+######### Case 4: SMI ~ age + EB #######
 #####SMI of VanAqua frogs by age from 2011-2022#####
 # Continuous dependent variable: SMI
-# Categorical independent variables: GVZ, TZ, VA, Wild
+# Categorical independent variable: years (0-9)
 #Unbalanced design, unequal sample sizes
+VA_age$age <- factor(VA_age$age, levels = c("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ordered = TRUE))
+
+hist(VA_age$SMI)
+qqnorm(VA_age$SMI) #a little curved
+VA_age$log.SMI <- log(VA_age$SMI)
+hist(VA_age$log.SMI) #a nice bell curve!
+qqnorm(VA_age$log.SMI)
+
+shapiro.test(subset(VA_age, age == "0")$SMI) # p-value: 1.264e-14
+shapiro.test(subset(VA_age, age == "1")$SMI) # p-value: 8.803e-13
+shapiro.test(subset(VA_age, age == "2")$SMI) # p-value: 0.002996
+shapiro.test(subset(VA_age, age == "3")$SMI) # p-value: 2.66e-07
+shapiro.test(subset(VA_age, age == "4")$SMI) # p-value: 0.004647
+shapiro.test(subset(VA_age, age == "5")$SMI) # p-value: 0.1254 (normal)
+shapiro.test(subset(VA_age, age == "6")$SMI) # p-value: 0.2591 (normal)
+shapiro.test(subset(VA_age, age == "7")$SMI) # p-value: 0.0484
+shapiro.test(subset(VA_age, age == "8")$SMI) # p-value: 0.9503 (normal)
+shapiro.test(subset(VA_age, age == "9")$SMI) # p-value: 0.3323 (normal)
+#### about half are normal and half are not. older age groups seem to be normal. 
+#### smaller age groups have bigger sample size though
+shapiro.test(subset(VA_age, EB == "0")$SMI) # p-value: 5.328e-11
+shapiro.test(subset(VA_age, EB == "1")$SMI) # p-value: <2.2e-16
+## neither of these are anywhere near normal
+
+plot(SMI ~ age, data = VA_age) ##some major outliers here. particularly in the younger age groups. 
+plot(SMI ~ EB, data = VA_age) ## lots of spread
+VA_outliers <- VA_age %>% 
+  group_by(age) %>% 
+  identify_outliers("SMI")
+view(VA_outliers) # 9 extreme outliers
+### these outliers are mostly young ages... could be mix-up of year recorded or mix up btw frogs... 
+EB_outliers <- VA_age %>% 
+  group_by(EB) %>% 
+  identify_outliers("SMI")
+view(EB_outliers) # 16 "extreme outliers" - mix of EB and not
+### test out with and without outliers 
+
+bartlett.test(SMI ~ age, data = VA_age) #p-value: 3.134e-15
+bartlett.test(SMI ~ EB, data = VA_age) #p-value: 3.024e-06
+### variance is not equal. So we cannot use ANOVA. Friedman test is the nonparametric alternative
+## but our blocks are incomplete... use Skillings-Mack test insead
+# for un-balanced two-way block designs
+# each block must get at least two treatments
+# H0: treatments are equal
+# 
+#########################################################
+# library(Skillings.Mack)
+# skmk <- VA_age %>% 
+#   Ski.Mack(SMI, groups=EB, blocks=frog_id) 
+#########################################################
+# cannot figure above homie out. Not a lot of references on this. 
+#### Alternative plan: subset dataframe to a few frogs with the greatest number of repeated measures - create a complete block
+
