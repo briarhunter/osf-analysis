@@ -7,6 +7,7 @@ library(ggpubr)
 library(boot)
 library(mvnormtest)
 library(crunch)
+library(EnvStats)
 
 theme_set(theme_bw())
 
@@ -318,7 +319,8 @@ ggplot(data = VA_noF, aes(x = grade_01, y = to_first, fill=grade_01))+
   scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
                             "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 
 #### hrs apx #####################################################
 ## how long did females of each grade 01 spend in amplexus over first 59 hours? ## 
@@ -535,7 +537,8 @@ ggplot(VA_data, aes(x = as.factor(age), y = mass_spr, colour = status, fill = NA
         legend.box.background = element_rect(fill = "#F6F0ED"))+
   scale_fill_brewer(palette = "Dark2")+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 #### we actually see that for the 3yo frogs most of the egg bound ones were lower weight than the ER ones
 ##but in older ages we see those two obese frogs who become egg bound
 #subset into 3 age groups (young - adult - old) by adding "maturity" column
@@ -557,7 +560,8 @@ ggplot(VA_data, aes(x = maturity, y = mass_spr, colour = status))+
   theme_classic()+
   scale_x_discrete(labels=c("young" = "young (3-4)", "adult" = "adult (5-7)", "old" = "old (8+)"))+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 ##### see the trend of low EB mass in young frogs, high mass in older EB frogs more clearly
 
 ### can we visualize the interact of mass and grade 01 on what the final status is? 
@@ -762,19 +766,23 @@ plot(post_aov_3)
 
 ### plot the ANOVA and post-hoc tests
 library(ggstatsplot)
-### significance of mass differences between status groups (EB, ER, OK)
+### significance of mass differences between status groups (EB, ER, OK) for 3 yo 
 ggbetweenstats(
   data = VA_3,
   x = status,
   y = mass_spr,
-  type = "parametric", # ANOVA or Kruskal-Wallis
-  var.equal = TRUE, # ANOVA or Welch ANOVA
+  type = "parametric", # ANOVA 
+  var.equal = TRUE, 
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.display = "significant",
   centrality.plotting = FALSE,
   bf.message = FALSE
 )
+#########################################################################################
+#### this graph is automatically displaying results of a Fisher test - not ANOVA. 
+#### Should we have been doing a Fisher and not an ANOVA? But Fisher seems to be for categorical data not nominal...
+#########################################################################################
 
 ########### Do same thing as above but with "older" group
 ##### Here is where we expect to see the significant differences by status grouping
@@ -811,8 +819,8 @@ ggbetweenstats(
   data = VA_no3,
   x = status,
   y = mass_spr,
-  type = "parametric", # ANOVA or Kruskal-Wallis
-  var.equal = TRUE, # ANOVA or Welch ANOVA
+  type = "parametric", # should be ANOVA but it's not??? - automatically selected
+  var.equal = TRUE, 
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.display = "significant",
@@ -1113,3 +1121,4 @@ ggbetweenstats(
   centrality.plotting = FALSE,
   bf.message = FALSE
 )
+
