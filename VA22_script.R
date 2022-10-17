@@ -12,25 +12,24 @@ library(EnvStats)
 theme_set(theme_bw())
 
 VA_data <- read.csv("OSF_VA22females.csv", header = TRUE)
-#stacked version of duration data better for repeated measures statistics
 head(VA_data)
 view(VA_data)
-dim(VA_data) #35 rows, 24 columns
-VA_data$grade_01 <- factor(VA_data$grade_01, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
-VA_data$grade_02 <- factor(VA_data$grade_02, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
-VA_data$grade_03 <- factor(VA_data$grade_03, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
-VA_data$grade_04 <- factor(VA_data$grade_04, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
+dim(VA_data) #35 rows, 25 columns
+VA_data$grade_01 <- factor(VA_data$grade_01, levels = c("0", "1", "2", "3"), ordered = TRUE)
+VA_data$grade_02 <- factor(VA_data$grade_02, levels = c("0", "1", "2", "3", "DE"), ordered = TRUE)
+VA_data$grade_03 <- factor(VA_data$grade_03, levels = c("0", "1", "2", "3", "DE"), ordered = TRUE)
+VA_data$grade_04 <- factor(VA_data$grade_04, levels = c("0", "1", "2", "3", "DE"), ordered = TRUE)
+VA_data$final_gr <- factor(VA_data$final_gr, levels = c("0", "1", "2", "3", "4"), ordered = TRUE)
 VA_data$frog_code <- as.factor(VA_data$frog_code)
 VA_data$frog_id <- as.factor(VA_data$frog_id)
 VA_data$treatment <- factor(VA_data$treatment, levels = c(
   "C", "H", "V", "HV", "PHV", "F"), ordered = FALSE)
 VA_data$source <- as.factor(VA_data$source)
 VA_data$birth_type <- as.factor(VA_data$birth_type)
-VA_data$status <- as.factor(VA_data$status)
+VA_data$status <- as.factor(VA_data$status) # 4 levels: EB, ER, LA, NF
 str(VA_data)
 # percent_hrs is currently character - should be numeric but leave for now 
 summary(VA_data)
-attach(VA_data)
 
 #visualize the data. looking for normalcy. 
 hist(VA_data$mass_fall, main = "Fall Mass (g)")
@@ -307,8 +306,6 @@ ggplot(data = VA_data, aes(x = age, y = grade_01, colour = birth_type))+
 ###################################################################################
 #using VA_noF dataframe because F group does not have measured amplexus behaviours
 
-
-
 #####start with time to first contact
 ggplot(data = VA_noF, aes(x = grade_01, y = to_first, fill=grade_01))+
   geom_boxplot(show.legend = FALSE)+
@@ -324,9 +321,7 @@ ggplot(data = VA_noF, aes(x = grade_01, y = to_first, fill=grade_01))+
 
 #### hrs apx #####################################################
 ## how long did females of each grade 01 spend in amplexus over first 59 hours? ## 
-
-# if substituting below grade_01 with other grades, use: data = subset(VA_noF, !is.na(grade_02))
-# this will remove NA values for that particular grade
+# can sub in other grades here to see differences, add "DE" = "deceased" in x labels for grades 02-04
 ggplot(data = VA_noF, aes(x = grade_01, y = hrs_apx, fill=grade_01))+
   geom_boxplot(show.legend = FALSE)+
   labs(x = "Follicular Grade", y = "Time (hrs)", title = "Total time spent in amplexus by grade 01",
@@ -337,25 +332,27 @@ ggplot(data = VA_noF, aes(x = grade_01, y = hrs_apx, fill=grade_01))+
   scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
                             "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 
 #### convert amplexus data to long form and look at distributions ############################
 #### does grade 01 predict whether female spends more time in touch or attempt or successful phase? #### 
 
 #### total number of amplectants #####################################################
-ggplot(data = subset(VA_noF, !is.na(grade_04)), aes(x = grade_04, y = tot_num_amplex, fill=grade_04))+
+ggplot(data = VA_noF, aes(x = grade_02, y = tot_num_amplex, fill=grade_01))+
   geom_boxplot(show.legend = FALSE)+
-  labs(x = "Follicular Grade", y = "Count", title = "Total number of amplectants")+
+  labs(x = "Follicular Grade", y = "Count", title = "Total number of amplectants by grade 01")+
   theme_classic()+
   scale_fill_brewer(palette = "Pastel2")+
   theme(legend.title = element_blank())+
   scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
                             "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text() ######## check for significant difference on this. want to see if grade 2 was "favoured"
 
 #### number of successful amplectants #####################################################
-ggplot(data = subset(VA_noF, !is.na(grade_04)), aes(x = grade_04, y = tot_num_suc, fill=grade_04))+
+ggplot(data = VA_noF, aes(x = grade_04, y = tot_num_suc, fill=grade_04))+
   geom_boxplot(show.legend = FALSE)+
   labs(x = "Follicular Grade", y = "Count", title = "Number of successful amplectants")+
   theme_classic()+
@@ -364,9 +361,10 @@ ggplot(data = subset(VA_noF, !is.na(grade_04)), aes(x = grade_04, y = tot_num_su
   scale_x_discrete(labels=c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
                             "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)"))+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 ##### run through grades 01-04, what we see: 
-## grade 01: 0-1 seem to be sig lower # than 2-3
+## grade 01: 0 seems to be sig lower # than 2-3 but big spread
 ## grade 02: maybe none sig? weird spread
 ## 03: 4 is higher but maybe not sig cause of spread? 04: " 
 
@@ -378,11 +376,12 @@ ggplot(data = VA_noF, aes(x = status, y = as.numeric(as.character(grade_01)), fi
   theme_classic()+
   scale_fill_brewer(palette = "Dark2")+
   theme(legend.title = element_blank())+
-  scale_x_discrete(labels=c("OK" = "Other (no mature eggs)", "ER" = "Egg retention",
-                            "EB" = "Egg bound"))+
+  scale_x_discrete(labels=c("LA" = "Laid eggs", "ER" = "Egg retention",
+                            "EB" = "Egg bound", "NF" = "No follicles"))+
   stat_summary(fun=mean, geom="point", shape=20, size=10, color="black", fill="black")+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 ### maybe not the best graph - shows the trend very clearly but doesn't tell the full story
 
 ### final status distribution by treatment 
@@ -432,7 +431,8 @@ ggplot(data = VA_noF, aes(x = as.factor(age), y = mass_spr, colour = birth_type)
   scale_fill_brewer(palette = "Dark2")+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 
 ########### grade01 ~ status relationship with or without facet by birth type ######
 ###### does particular day 00 grade predict egg binding down the road? #############
@@ -465,10 +465,6 @@ ggplot(VA_data, aes(x = grade_01, fill = status))+
   geom_bar(alpha = 0.5)+
   labs(x = "Follicular Grade", title = "Does Initial Follicular Grade Predict Final Status?")+
   theme_classic()+
-  theme(panel.background = element_rect(fill = "#F6F0ED"), 
-        plot.background = element_rect(fill = "#F6F0ED"), 
-        legend.background = element_rect(fill = "#F6F0ED"),
-        legend.box.background = element_rect(fill = "#F6F0ED"))+
   scale_fill_manual(labels = c("EB" = "egg bound", "ER" = "egg retention", "OK" = "other"))+
   scale_fill_brewer(palette = "Dark2")+
   scale_y_continuous(breaks = c(2, 4, 6, 8, 10, 12))+
@@ -477,34 +473,34 @@ ggplot(VA_data, aes(x = grade_01, fill = status))+
 
 ### Same plot as above but subbing in grades 02-04 without NA values included
 # this is because NA represents females who have already died - should not be included
-ggplot(data = subset(VA_noF, !is.na(grade_02)), aes(x = grade_02, fill = status))+
+ggplot(data = subset(VA_noF, !is.na(grade_03)), aes(x = grade_03, fill = status))+
   geom_bar(alpha = 0.5)+
-  labs(x = "Follicular Grade", title = "Does Follicular Grade 02 Predict Final Status?")+
+  labs(x = "Follicular Grade", title = "Does Follicular Grade 03 Predict Final Status?")+
   theme_classic()+
-  scale_fill_manual(labels = c("EB" = "egg bound", "ER" = "egg retention", "OK" = "other"))+
   scale_fill_brewer(palette = "Dark2")+
   scale_y_continuous(breaks = c(2, 4, 6, 8, 10, 12))+
+  scale_x_discrete(labels = c("0" = "0 (non-gravid)", "1" = "1 (early-gravid)",
+                              "2" = "2 (mid-gravid)", "3" = "3 (late-gravid)", "DE" = "deceased"))+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
 ########################################################
-#### we have designated the final u/s image for females who become egg bound or ER as a grade 4 ....
-#### but this means we don't see what the grade actually was leading up to egg binding... i.e. if it was 2 or 3
-### may need to just add a column for 'designated final grade' etc to indicate grade 4s, but still have them count as 2 or 3
-########################################################
 # do some more complicated model (GLM?) to see which u/s grade (01-04) best predicts final status 
+########################################################
 
 ### what is the distribution of grade 01 across age and status? 
 ## i.e. do age and grade predict final status? ##
 ggplot(VA_data, aes(x = age, fill = grade_01))+
   geom_bar(alpha = 0.9)+
   facet_grid(~status)+
-  labs(x = "Age (yrs)")+
+  labs(x = "Age (yrs)", title = "Distribution of first follicular grade by final status")+
   theme_classic()+
   scale_fill_discrete(name = "Follicular Grade")+
-  scale_fill_brewer(palette = "Pastel2")+
+  scale_fill_brewer(palette = "Dark2")+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
-
+#### we see one female in the LA (laid eggs) group who has a grade 0 on day01
+#### this is because she laid all her eggs BEFORE males were added, laying "before breeding season" 
+##################
 
 ###### does heavier weight = higher follicular grade on day 00?
 ##is size/weight a proxy for males to determine which females are ready to oviposit?
@@ -514,10 +510,6 @@ ggplot(VA_data, aes(x = grade_01, y = mass_spr, colour = status, fill = NA))+
   theme_classic()+
   scale_x_discrete(labels=c("0" = "0: not gravid", "1" = "1: eary gravid", "2" = "2: mid-gravid",
                             "3" = "3: late gravid"))+
-  theme(panel.background = element_rect(fill = "#F6F0ED"), ### background fill to match ppt 
-        plot.background = element_rect(fill = "#F6F0ED"), 
-        legend.background = element_rect(fill = "#F6F0ED"),
-        legend.box.background = element_rect(fill = "#F6F0ED"))+
   scale_fill_brewer(palette = "Dark2")+ #don't think this fill is actually applied here
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
@@ -559,6 +551,8 @@ ggplot(VA_data, aes(x = maturity, y = mass_spr, colour = status))+
   labs(x = "Age (yrs)", y = "Mass (g)", title = "Is age indicative of mass?")+
   theme_classic()+
   scale_x_discrete(labels=c("young" = "young (3-4)", "adult" = "adult (5-7)", "old" = "old (8+)"))+
+  scale_colour_discrete(name = "final status", labels = c("EB" = "egg bound", "ER" = "egg retention",
+                                                      "LA" = "laid eggs", "NF" = "no follicles"))+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))+
   stat_n_text()
@@ -733,10 +727,11 @@ view(VA_data)
 
 # check Shapiro test by maturity groups, not individual ages
 shapiro.test(subset(VA_3, status == "EB")$mass_spr) # p-value: 0.1912
-shapiro.test(subset(VA_3, status == "ER")$mass_spr) # p-value: 0.284
-shapiro.test(subset(VA_3, status == "OK")$mass_spr) # p-value: 0.7721
+shapiro.test(subset(VA_3, status == "ER")$mass_spr) # p-value: 0.0974
+shapiro.test(subset(VA_3, status == "LA")$mass_spr) # insufficient sample size
+shapiro.test(subset(VA_3, status == "NF")$mass_spr) # p-value: 0.7721
 # all p-values are >0.05 so all variances are normally distributed, but small sample sizes
-# ER n=6, ER n=6, OK n=3
+# ER n=6, ER n=4, LA n=2, NF=3
 
 ##################################################################
 # Test assumption of homogeneity of variance
@@ -744,13 +739,13 @@ shapiro.test(subset(VA_3, status == "OK")$mass_spr) # p-value: 0.7721
 
 plot(mass_spr~status, data = VA_3) #see one significant outlier in the EB group - keep because of small sample sizes?
 bartlett.test(mass_spr~status, data = VA_3)
-# p-value: 0.1686 - accept the null hypothesis
+# p-value: 0.1817 - accept the null hypothesis
 # the variance is homogenous so we can proceed to the ANOVA
 
 ### ANOVA using aov (one-way test)
 aov_3 <- aov(mass_spr~status, data = VA_3)
 summary(aov_3)
-# F = 662.1, num df = 2, p-value = 0.0128 *
+# F = 4.889, num df = 3, p-value = 0.0213 *
 
 # Interpretation of results
 # since p-value is < 0.05 (just barely), we reject the null hypothesis
@@ -760,7 +755,7 @@ summary(aov_3)
 library(multcomp)
 post_aov_3 <- glht(aov_3, linfct = mcp(status = "Tukey"))
 summary(post_aov_3)
-## ER - EB are not significantly different but OK - EB and OK - ER are slightly significantly different (*)
+## Only NF - LA are significantly different (*)
 par(mar = c(3, 8, 3, 3))
 plot(post_aov_3)
 
@@ -771,6 +766,9 @@ ggbetweenstats(
   data = VA_3,
   x = status,
   y = mass_spr,
+  title = "Significance of mass differences in 3 year old OSF",
+  xlab = "Final Status",
+  ylab = "Mass (g)",
   type = "parametric", # ANOVA 
   var.equal = TRUE, 
   plot.type = "box",
@@ -786,39 +784,39 @@ ggbetweenstats(
 
 ########### Do same thing as above but with "older" group
 ##### Here is where we expect to see the significant differences by status grouping
-shapiro.test(subset(VA_no3, status == "EB")$mass_spr) # insufficient sample size for comparison (n=2)
-shapiro.test(subset(VA_no3, status == "ER")$mass_spr) # p-value: 0.7311
-shapiro.test(subset(VA_no3, status == "OK")$mass_spr) # p-value: 0.927
-# both p-values are >0.05 so all variances are normally distributed, but small sample sizes. EB group is only n=2
-# ER n=2, ER n=15, OK n=3
+# insufficient sample size for comparison in EB (n=2), LA (n=1), and NF (n=2)
+shapiro.test(subset(VA_no3, status == "ER")$mass_spr) # p-value: 0.6937 (normal)
+## very small sample sizes... hard to analyze? 
 
 ##################################################################
 # Test assumption of homogeneity of variance
 # Null hypothesis of Bartlett: variance is equal
 
 plot(mass_spr~status, data = VA_no3) #see no significant outliers 
-bartlett.test(mass_spr~status, data = VA_no3)
-# p-value: 0.6257 - accept the null hypothesis - proceed to ANOVA
+# cannot do bartlett with LA having only one observation... let's try ANOVA and KW to compare
 
 aov_no3 <- aov(mass_spr~status, data = VA_no3)
 summary(aov_no3)
-# F = 6.85, num df = 2, p-value = 0.00658 **
-
-# Interpretation of results
-# since p-value is < 0.05 (just barely), we reject the null hypothesis
-# we conclude at least one status group's mass is different than the others - do post-hoc test
+# F = 5.785, num df = 3, p-value = 0.00708 **
+kruskal.test(mass_spr ~ status, data = VA_no3)
+# chi-squared = 7.5505, df = 3, p-value = 0.05628
+######## ANOVA says there is a significant difference but Kruskal-Wallis says there isn't... 
+############### Let's do a post-hoc to see what it shows ###################################
 
 # Tukey HSD test - post-hoc test
 post_aov_no3 <- glht(aov_no3, linfct = mcp(status = "Tukey"))
 summary(post_aov_no3)
-## ER - EB are  significantly different (**), OK - EB also significantly different (**)
-## but OK - ER are not significantly different
+## ER - EB are  significantly different (*), LA - EB significantly different (*), and NF - EB (**)
+## no others are significantly different
 
 ### plot the ANOVA and post-hoc tests
 ggbetweenstats(
-  data = VA_no3,
+  data = subset(VA_no3, status != "LA"), #wll not include LA because n=1
   x = status,
   y = mass_spr,
+  title = "Significance of mass differences in 3 year old OSF",
+  xlab = "Final Status",
+  ylab = "Mass (g)",
   type = "parametric", # should be ANOVA but it's not??? - automatically selected
   var.equal = TRUE, 
   plot.type = "box",
@@ -828,13 +826,13 @@ ggbetweenstats(
   bf.message = FALSE
 )
 
-
 ##### can we do a Two-Way ANOVA to see differences in mass by status on one graph?
 
 ### ANOVA by aov, adding status for two-way ANOVA: modeling mass as a function of maturity and status
 matst_aov <- aov(mass_spr ~ maturity + status, data = VA_data)
 summary(matst_aov)
-# seems to have improved the model. The residual sum of squares has gone down and both maturity and status are significant (p < 0.05)
+# seems to have improved the model (vs mat_aov) 
+# The residual sum of squares has gone down and both maturity and status are significant (p < 0.05)
 
 # test whether the two variables have an interaction effect in ANOVA
 interaction <- aov(mass_spr ~ maturity*status, data = VA_data)
@@ -853,12 +851,11 @@ summary(interaction)
 # Categorical independent variables: ultrasound grade
 #Unbalanced design, unequal sample sizes
 ##################################################################
-shapiro.test(subset(VA_data, grade_01 == "0")$to_first) # p-value: 0.1069
-shapiro.test(subset(VA_data, grade_01 == "1")$to_first) # p-value: 0.0414
-shapiro.test(subset(VA_data, grade_01 == "2")$to_first) # p-value: 0.01232
-shapiro.test(subset(VA_data, grade_01 == "3")$to_first) # p-value: 0.2805
-# p-values for grades 0 and 3 are >0.05 (normal) but 1 and 2 are not normal 
-# small sample sizes all around but particularly 0 and 3. 0: n=4, 1: n=12, 2: n=12, 3: n=7
+shapiro.test(subset(VA_data, grade_01 == "0")$to_first) # p-value: 0.7244, n=5
+shapiro.test(subset(VA_data, grade_01 == "1")$to_first) # p-value: 0.05134 n=11
+shapiro.test(subset(VA_data, grade_01 == "2")$to_first) # p-value: 0.01232 n=12
+shapiro.test(subset(VA_data, grade_01 == "3")$to_first) # p-value: 0.2805 n=7
+# p-values for grade 2 is not normal p<0.05 
 
 ##################################################################
 # Test assumption of homogeneity of variance
@@ -866,23 +863,21 @@ shapiro.test(subset(VA_data, grade_01 == "3")$to_first) # p-value: 0.2805
 
 plot(to_first~grade_01, data = VA_data) #visual check - grade 2 seems to have a couple significant outliers
 bartlett.test(to_first~grade_01, data = VA_data)
-# p-value: 0.5403 - accept the null hypothesis
-# the variance is homogenous but data was mostly not normal so let's use a Kruskal-Wallis
+# p-value: 0.5125 - accept the null hypothesis
+# the variance is homogenous and data was mostly normal so let's do ANOVA 
 
-### Kruskal-Wallis test
-kruskal.test(to_first~grade_01, data = VA_data)
-# chi-squared = 7.122, p-value = 0.06811
-# p > 0.05 (barely) so we ACCEPT the null hypothesis of all times to first contact being equal
+aov_first <- aov(to_first ~ grade_01, data = VA_data)
+summary(aov_first) # not significant = accept null that all are "equal" 
 
 ### on the previous plot it did appear there were differences between times
-### perhaps the large variation in times is what makes them not significant... what if the two outliers in grade 2 were removed? 
+### perhaps the large variation in times is what makes them not significant... 
+### what if the two outliers in grade 2 were removed? 
 
 ### can we really assess this question (to_first) if we are including the PHV treatment? Big bias no? 
 # use dataset first_noPHV
 plot(to_first~grade_01, data = first_noPHV) #gr 2's times jump up and suddenly include way more spread
-kruskal.test(to_first~grade_01, data = first_noPHV)
-# chi-squared = 5.836, p-value = 0.1199
-##################### we see the significance go way down here (p > 0.05) and visually boxes look much closer
+aov_noPHV <- aov(to_first ~ grade_01, data = first_noPHV)
+summary(aov_noPHV) ## Again, not significant. Also did a KW test and agreed with this result.
 ##################### confirms previous test: no differences between times by ultrasound grade 01
 
 ## One-way ANOVA can tell me if treatment impacts time spent in amplexus
@@ -897,16 +892,15 @@ kruskal.test(to_first~grade_01, data = first_noPHV)
 # Categorical independent variables: ultrasound grade (and treatment?)
 #Unbalanced design, unequal sample sizes
 ##################################################################
-shapiro.test(subset(VA_data, grade_01 == "0")$hrs_apx) # p-value: 0.004132 = significant (n=4) = not-normal
-shapiro.test(subset(VA_data, grade_01 == "1")$hrs_apx) # p-value: 0.001602 = significant (n=12)
+shapiro.test(subset(VA_data, grade_01 == "0")$hrs_apx) # p-value: 0.003902 = significant (n=5) = not-normal
+shapiro.test(subset(VA_data, grade_01 == "1")$hrs_apx) # p-value: 0.002194 = significant (n=11)
 shapiro.test(subset(VA_data, grade_01 == "2")$hrs_apx) # p-value: 0.007329 = significant (n=12)
 shapiro.test(subset(VA_data, grade_01 == "3")$hrs_apx) # p-value: 0.4475 = not-significant (n=7) = normal
 
 shapiro.test(subset(VA_data, grade_02 == "0")$hrs_apx) # p-value: 0.0002105 (n=5)
-shapiro.test(subset(VA_data, grade_02 == "1")$hrs_apx) # p-value: cannot calculate (n=3)
-shapiro.test(subset(VA_data, grade_02 == "2")$hrs_apx) # p-value: 0.002582
-shapiro.test(subset(VA_data, grade_02 == "3")$hrs_apx) # p-value: 0.003731 (n=8)
-shapiro.test(subset(VA_data, grade_02 == "4")$hrs_apx) # p-value: cannot calculate (n=2)
+shapiro.test(subset(VA_data, grade_02 == "2")$hrs_apx) # p-value: 0.002582 (n=16)
+shapiro.test(subset(VA_data, grade_02 == "3")$hrs_apx) # p-value: 0.001312 (n=10)
+# cannot calculate for 1 (n=3), or DE (n=1)
 
 qqnorm(VA_data$hrs_apx) #does not look normal - not straight at all
 hist(VA_data$hrs_apx) #large right tail
@@ -918,28 +912,30 @@ plot(hrs_apx~grade_03, data = VA_data)
 plot(hrs_apx~grade_04, data = VA_data)
 
 # check homogeneity of variances with Bartlett test
-bartlett.test(hrs_apx~grade_01, data = VA_data) #p = 0.0001404 (reject null)
+bartlett.test(hrs_apx~grade_01, data = VA_data) #p = 3.222e-06 (reject null)
 bartlett.test(hrs_apx~grade_02, data = VA_data) # p cannot be calculated (too small sample sizes)
-bartlett.test(hrs_apx~grade_03, data = VA_data) #p = 0.8502 (accept null = homogenous)
-bartlett.test(hrs_apx~grade_04, data = VA_data) #p = 0.05544 (barely accept null = homogenous)
+bartlett.test(hrs_apx~grade_03, data = VA_data) #p = 0.8317 (accept null = homogenous)
+bartlett.test(hrs_apx~grade_04, data = VA_data) #p = 0.05452 (barely accept null = homogenous)
 # use Kruskal-Wallis since most data is not normal and some don't have homogenous variance
 
-kruskal.test(hrs_apx~grade_01, data = VA_data) ## p-value = 0.04075 #### reject null = some differ
-kruskal.test(hrs_apx~grade_02, data = VA_data) ## p-value = 0.5236 ### accept null. none differ
-kruskal.test(hrs_apx~grade_03, data = VA_data) ## p-value = 0.6787 ### accept null. none differ
-kruskal.test(hrs_apx~grade_04, data = VA_data) ## p-value = 0.2937 ### accept null. none differ
+kruskal.test(hrs_apx~grade_01, data = VA_data) ## p-value = 0.03077 #### reject null = some differ
+kruskal.test(hrs_apx~grade_02, data = VA_data) ## p-value = 0.271 ### accept null. none differ
+kruskal.test(hrs_apx~grade_03, data = VA_data) ## p-value = 0.3569 ### accept null. none differ
+kruskal.test(hrs_apx~grade_04, data = VA_data) ## p-value = 0.3624 ### accept null. none differ
 
 ### only need to do post-hoc test on grade_01 since it was the only one with significant K-W test
 library(FSA)
 dunnTest(hrs_apx~grade_01, data = VA_data, method = "holm")
-#### the only means that differ significantly are 0 to 2 with a p.adj = 0.04755612
-#### this is barely significant
+#### THIS IS NOT WORKING ??? giving some warning message... can't get it to work... come back to
 
 ## plot statistical results to show minor significant differences
 ggbetweenstats(
   data = VA_data,
   x = grade_01,
   y = hrs_apx,
+  ylab = "Time (hrs)",
+  xlab = "Follicular grade",
+  title = "Total time in amplexus by first follicular grade",
   type = "nonparametric", # ANOVA or Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
@@ -953,8 +949,8 @@ ggbetweenstats(
 # Categorical independent variables: ultrasound grade
 #Unbalanced design, unequal sample sizes
 ##################################################################
-shapiro.test(subset(VA_data, grade_01 == "0")$tot_num_amplex) # p-value: 0.00717
-shapiro.test(subset(VA_data, grade_01 == "1")$tot_num_amplex) # p-value: 0.03373
+shapiro.test(subset(VA_data, grade_01 == "0")$tot_num_amplex) # p-value: 0.02705
+shapiro.test(subset(VA_data, grade_01 == "1")$tot_num_amplex) # p-value: 0.01006
 shapiro.test(subset(VA_data, grade_01 == "2")$tot_num_amplex) # p-value: 0.2073
 shapiro.test(subset(VA_data, grade_01 == "3")$tot_num_amplex) # p-value: 0.1275
 # p-values for grades 0 and 3 are >0.05 (normal) but 1 and 2 are not normal 
@@ -962,15 +958,15 @@ shapiro.test(subset(VA_data, grade_01 == "3")$tot_num_amplex) # p-value: 0.1275
 shapiro.test(subset(VA_data, grade_02 == "0")$tot_num_amplex) # p-value: 0.04007 = significant = not-normal
 shapiro.test(subset(VA_data, grade_02 == "1")$tot_num_amplex) # small sample size
 shapiro.test(subset(VA_data, grade_02 == "2")$tot_num_amplex) # p-value: 0.03789 = significant 
-shapiro.test(subset(VA_data, grade_02 == "3")$tot_num_amplex) # p-value: 0.05132 = not-significant = normal
-shapiro.test(subset(VA_data, grade_02 == "4")$tot_num_amplex) # sample size too small
+shapiro.test(subset(VA_data, grade_02 == "3")$tot_num_amplex) # p-value: 0.02219 = not-significant = normal
+shapiro.test(subset(VA_data, grade_02 == "DE")$tot_num_amplex) # sample size too small
 
 shapiro.test(subset(VA_data, grade_03 == "0")$tot_num_amplex) # p-value: 0.02778
 shapiro.test(subset(VA_data, grade_03 == "1")$tot_num_amplex) # p-value: 0.1736
-shapiro.test(subset(VA_data, grade_03 == "2")$tot_num_amplex) # p-value: 0.07599
-shapiro.test(subset(VA_data, grade_03 == "3")$tot_num_amplex) # p-value: 0.3864
-shapiro.test(subset(VA_data, grade_03 == "4")$tot_num_amplex) # p-value: 0.4638
-## grade_03 are all normal - but may be biased by very small sample sizes
+shapiro.test(subset(VA_data, grade_03 == "2")$tot_num_amplex) # p-value: 0.1485
+shapiro.test(subset(VA_data, grade_03 == "3")$tot_num_amplex) # p-value: 0.0899
+shapiro.test(subset(VA_data, grade_03 == "DE")$tot_num_amplex) # p-value: 0.8999
+## grade_03 are all normal - but may be biased by small sample sizes
 
 qqnorm(VA_data$tot_num_amplex) #not very straight
 hist(VA_data$tot_num_amplex) #large right tail
@@ -978,32 +974,32 @@ hist(VA_data$tot_num_amplex) #large right tail
 library(car)
 qqPlot(VA_data$tot_num_amplex, id = FALSE) #a very wide confidence band but most points are within it
 
-plot(tot_num_amplex~grade_01, data = VA_data)
+plot(tot_num_amplex~grade_01, data = VA_data) #a couple potential outliers
 plot(tot_num_amplex~grade_02, data = VA_data)
 plot(tot_num_amplex~grade_03, data = VA_data)
-plot(tot_num_amplex~grade_04, data = VA_data) #see one potentially significant outlier in grade 4 here
+plot(tot_num_amplex~grade_04, data = VA_data) #see one potentially significant outlier in DE here
 
 # check homogeneity of variances with Bartlett test
-bartlett.test(tot_num_amplex~grade_01, data = VA_data) #p = 0.1965 (accept null = homogenous)
-bartlett.test(tot_num_amplex~grade_02, data = VA_data) # p cannot be calculated (too small sample sizes)
-bartlett.test(tot_num_amplex~grade_03, data = VA_data) #p = 0.6622 (accept null = homogenous)
-bartlett.test(tot_num_amplex~grade_04, data = VA_data) #p = 0.6718 ( accept null = homogenous)
-# we can use ANOVA because data seems to be normal and variance is homogenous (we don't know this for grade_02 for sure)
+bartlett.test(tot_num_amplex~grade_01, data = VA_data) #p = 0.2081 (accept null = homogenous)
+bartlett.test(tot_num_amplex~grade_02, data = subset(VA_data, grade_02 != "DE")) #DE excluded cause n=1; p=0.5322
+bartlett.test(tot_num_amplex~grade_03, data = VA_data) #p = 0.2575 (accept null = homogenous)
+bartlett.test(tot_num_amplex~grade_04, data = VA_data) #p = 0.3369 ( accept null = homogenous)
+# we can use ANOVA because data seems to be normal and variance is homogenous
 
 ### ANOVA using aov (one-way test)
 aov_num01 <- aov(tot_num_amplex~grade_01, data = VA_data)
 summary(aov_num01)
-# F = 1.43 , num df = 3, p-value = 0.257
+# F = 1.33 , num df = 3, p-value = 0.286
 
 # Interpretation of results
 # since p-value is > 0.05, we accept the null hypothesis
 #### There are no significant differences between means
 aov_num02 <- aov(tot_num_amplex~grade_02, data = VA_data)
-summary(aov_num02) # F = 0.543 , num df = 4, p-value = 0.706 #### accept null
+summary(aov_num02) # F = 0.643 , num df = 4, p-value = 0.637 #### accept null
 aov_num03 <- aov(tot_num_amplex~grade_03, data = VA_data)
-summary(aov_num03) # F = 0.645 , num df = 4, p-value = 0.645 #### accept null
+summary(aov_num03) # F = 1.037 , num df = 4, p-value = 0.408 #### accept null
 aov_num04 <- aov(tot_num_amplex~grade_04, data = VA_data)
-summary(aov_num04) # F = 0.6 , num df = 4, p-value = 0.558 #### accept null
+summary(aov_num04) # F = 2.3 , num df = 4, p-value = 0.0868 #### accept null
 
 ##### Conclusion: there are no significant differences between means in any grade_ 
 ##### No post-hoc test necessary
@@ -1026,8 +1022,12 @@ numt_aov <- aov(tot_num_amplex ~ grade_03 + treatment, data = VA_data)
 summary(numt_aov)
 numt_aov <- aov(tot_num_amplex ~ grade_04 + treatment, data = VA_data)
 summary(numt_aov)
-### all seem to improve the models, but treatment is still only one significant
+### all seem to improve the models, but treatment is still only one significant except for grade_04
 ### which makes sense because the one-way ANOVA said grade was not significant
+######### try interaction model for grade_04 #######
+interaction_4 <- aov(tot_num_amplex ~ grade_04 * treatment, data = VA_data)
+summary(interaction_4) #grade_04 and treatment both explain significant amount of variance (*)
+#### but interaction does not
 
 ################################################################################
 ### Let's look at amplexus behaviours ~ treatment for significance #############
@@ -1054,7 +1054,10 @@ ggbetweenstats(
   data = VA_data,
   x = treatment,
   y = to_first,
-  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  ylab = "Time (hrs)",
+  xlab = "Treatment",
+  title = "time to first contact per female",
+  type = "nonparametric", # Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.display = "significant",
@@ -1084,6 +1087,9 @@ ggbetweenstats(
   data = VA_data,
   x = treatment,
   y = hrs_apx,
+  ylab = "Time (hrs)",
+  xlab = "Treatment",
+  title = "total time in amplexus over first 59 hours",
   type = "nonparametric", # ANOVA or Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
@@ -1114,6 +1120,8 @@ ggbetweenstats(
   data = VA_data,
   x = treatment,
   y = tot_num_amplex,
+  ylab = "number of amplectants",
+  title = "total number of amplectants by female over first 59 hours",
   type = "nonparametric", # ANOVA or Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
@@ -1121,4 +1129,61 @@ ggbetweenstats(
   centrality.plotting = FALSE,
   bf.message = FALSE
 )
+
+######################################################################################
+### Some quick plots of amplexus behaviours ~ status #################################
+### Does more sporadic, infrequent amplexus lead to egg binding? #####################
+plot(to_first ~ status, VA_data) #step-wise trend but nothing looks significant
+plot(hrs_apx ~ status, VA_data) #huge variation. nothing looks significant
+plot(tot_num_amplex ~ status, VA_data) #NF actually has higher # than EB... just variation?
+plot(tot_num_suc ~ status, VA_data) #ER has one outlier but would be lower? 
+#### not really seeing any clear trends here - nothing looks particularly significant
+#### first plot we see this trend of the shortest to longest time to first contact: EB < ER < LA < NF
+# let's check if any of those are significant
+shapiro.test(subset(VA_data, status == "EB")$to_first) # p-value: 0.03712
+shapiro.test(subset(VA_data, status == "ER")$to_first) # p-value: 0.01636
+shapiro.test(subset(VA_data, status == "LA")$to_first) # not enough sample size
+shapiro.test(subset(VA_data, status == "NF")$to_first) # p-value: 0.4473 (normal)
+bartlett.test(to_first ~ status, VA_data) # p-value: 0.6904 = homogenous. use ANOVA
+aov.status <- aov(to_first ~ status, VA_data)
+summary(aov.status) # p-value: 0.927 = no significant differences
+#### nothing significant but trend is still interesting. 
+
+## what if we grouped EB + ER and LA + NF to look at differences between OK and NOT 
+VA_data <- VA_data %>% 
+  mutate(health = case_when(status == "EB" ~ "RISK", status == "ER" ~ "RISK", 
+                            status == "LA" ~ "OK", status == "NF" ~ "OK")) %>% 
+  relocate(health, .after = status)
+VA_data$health <- as.factor(VA_data$health)
+plot(to_first ~ health, VA_data)
+shapiro.test(subset(VA_data, health == "RISK")$to_first) #p-value: 0.00152
+shapiro.test(subset(VA_data, health == "OK")$to_first) #p-value: 0.5317 (normal)
+bartlett.test(to_first ~ health, VA_data) #p-value: 0.5032 (homogenous)
+aov.ht <- aov(to_first ~ health, VA_data)
+summary(aov.ht) # p-value: 0.521 = not significant 
+##### even grouping in this way does not produce significant differences ###
+
+ggplot(VA_data, aes(x = status, fill = prev_breed))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~maturity)+
+  labs(x = "Final Status", title = "Are first time breeders more likely to become egg bound?")+
+  theme_classic()+
+  scale_fill_manual(name = "Previous Breeding?")+ #can't get this legend title to work with fill
+  scale_fill_brewer(palette = "Set2")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+
+######################################################################################
+### ultrasound grade comparison between GVZoo and VA #################################
+######################################################################################
+### to check validity of using amplexus data from VA 2022 ############################
+
+### Test: were VA frogs already so negatively impacted by their overwintering conditions (lack of
+### vegetation, water filtration/circulation, etc) that they behaved 'abnormally' in the first 59
+### hours when they were being monitored for amplexus behaviour
+######## To answer: compare day 01 ultrasound grades at VA and GVZ taken March 7 and 2 respectively ###
+######## If not impacted, GVZoo grade distribution should compare to VA "Control" group. VA grades 
+######## may vary  by individual frog or age or treatment but.
+######## BUT, if impacted, VA grades should all be consistently higher or lower than GVZoo grades. 
 
