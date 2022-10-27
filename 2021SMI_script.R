@@ -19,13 +19,13 @@ theme_set(theme_bw())
 
 SMI_zoos <- read.csv("2021SMI.csv", header = TRUE)
 head(SMI_zoos)
-view(SMI_zoos)
+view(SMI_zoos) #contains wild frogs caught only in 2021
 dim(SMI_zoos) #110 rows, 9 columns
-str(SMI_zoos) #set EB as factor ##set birth_yr as date/numeric?
 SMI_zoos$EB <- as.factor(SMI_zoos$EB) #as factor. Two levels: 0=EB 1=not (OK)
 SMI_zoos$pop <- as.factor(SMI_zoos$pop) #factor with 6 levels
 SMI_zoos$locale <- as.factor(SMI_zoos$locale) #factor with 2 levels (Wild, Zoo)
 #yr_birth <- as.Date(SMI_zoos$birth_yr, format = "%Y") # make new column or set birth_yr as numeric?
+str(SMI_zoos)
 summary(SMI_zoos)
 
 mass_zoos <- read.csv("2021mass.csv", header = TRUE)
@@ -36,17 +36,13 @@ str(mass_zoos) #set EB as factor
 mass_zoos$EB <- as.factor(mass_zoos$EB) #as factor. Two levels: 0=EB 1=not (OK)
 summary(mass_zoos)
 
-wild_SMI <- read.csv("2021wildSMI.csv", header = TRUE)
+wild_SMI <- read.csv("FULLwildSMI.csv", header = TRUE)
 head(wild_SMI)
-view(wild_SMI)
-dim(wild_SMI) #502 rows, 5 columns
-str(wild_SMI)
+view(wild_SMI) # data from all wild frogs caught from 2011-2022
+dim(wild_SMI) #502 rows, 6 columns
 wild_SMI$frog_id <- as.factor(wild_SMI$frog_id) #as factor. 490 levels (i.e. individual frogs)
-wild_SMI$pop <- as.factor(wild_SMI$pop) #as factor. 6 levels 
-#should not have 6 levels. need to trim white space from "MS "
-wild_SMI <- wild_SMI %>% 
-  mutate(pop = str_trim(pop, side = "both"))
-levels(wild_SMI$pop) #now has only 5 levels: "CH" "MS" "MT" "MV" "ST"
+wild_SMI$pop <- as.factor(wild_SMI$pop) #as factor. 5 levels: "CH" "MS" "MT" "MV" "ST"
+str(wild_SMI)
 summary(wild_SMI)
 
 prepo <-read.csv("prepost_SMI.csv", header = TRUE) #have now added calculated svl (using linear regressions below)
@@ -133,9 +129,7 @@ shapiro.test(prepo$svl_pre21) #nearly normal but not quite
 ####linear regressions to predict SVL for VanAqua SUL values #
 ##############################################################
 #### using length measurements taken by Pourya - Oct 2022 ####
-conversion <- read.csv("VA_lenths_oct2022.csv", header = TRUE)
-# convert <- melt(setDT(conversion), id=1:2, measure=patterns("^SUL", "^SVL"),
-#                value.name=c("sul", "svl"), variable.name="rep", na.rm = TRUE)
+conversion <- read.csv("VA_lengths_oct2022.csv", header = TRUE)
 #add columns for average SUL and SVL
 conversion$avgSUL <- rowMeans(conversion[ , c(3:5)], na.rm=TRUE)
 conversion$avgSVL <- rowMeans(conversion[ , c(6:8)], na.rm = TRUE)
@@ -343,7 +337,7 @@ title("Pre-brumation (Nov) 2021")
 
 
 # Mass (dependant) vs length (independent)
-############################ Wild Frog Data - full dataset (from 2012-2022*)
+############################ Wild Frog Data - full dataset (from 2011-2022)
 plot(avg_SVL~avg_mass, data = wild_SMI)
 plot(wild_SMI$avg_SVL, wild_SMI$avg_mass, pch = 16, cex = 1.0, ####### This isn't working ???? ################
      col = (c('blue', 'green', 'purple', 'orange', 'red')[as.numeric(wild_SMI$pop)]), #something up with this line
@@ -362,11 +356,11 @@ summary(lm(avg_mass ~ avg_SVL, data = wild_SMI_MV))
 abline(lm(avg_mass ~ avg_SVL, data = wild_SMI_ST), col = "red")
 summary(lm(avg_mass ~ avg_SVL, data = wild_SMI_ST))
 #no abline for MT pop because only 1 observation
-legend("topright", title = "Regression lines", c("n=502, Adjusted R-squared: 0.5563, p-value: 2.2e-16",
-                                                 "n=7, Adjusted R-squared: 0.3608, p-value: 0.0904",
-                                                 "n=155, Adjusted R-squared: 0.6485, p-value: 2.2e-16",
-                                                 "n=336, Adjusted R-squared: 0.5205, p-value: 2.2e-16",
-                                                 "n=3, Adjusted R-squared: 0.7963, p-value: 0.2068"),
+legend("topright", title = "Regression lines", c("n=502, Adjusted R-squared: 0.5608, p-value: 2.2e-16",
+                                                 "n=7, Adjusted R-squared: 0.5825, p-value: 0.0281",
+                                                 "n=155, Adjusted R-squared: 0.3152, p-value: 5.7e-15",
+                                                 "n=336, Adjusted R-squared: 0.7011, p-value: 2.2e-16",
+                                                 "n=3, Adjusted R-squared: 0.9991, p-value: 0.0133"),
        fill = c('black', 'blue', 'green', 'orange', 'red'), cex = 0.45)
 title("Full Wild M by L")
 
@@ -401,11 +395,11 @@ summary(lm(log.avg_mass ~ log.avg_SVL, data = wild_SMI_MV))
 abline(lm(log.avg_mass ~ log.avg_SVL, data = wild_SMI_ST), col = "red")
 summary(lm(log.avg_mass ~ log.avg_SVL, data = wild_SMI_ST))
 #no abline for MT pop because only 1 observation
-legend("bottomright", title = "Regression lines", c("n=502, Adjusted R-squared: 0.5931, p-value: 2.2e-16",
-                                                    "n=7, Adjusted R-squared: 0.2854, p-value: 0.1247",
-                                                    "n=155, Adjusted R-squared: 0.6651, p-value: 2.2e-16",
-                                                    "n=336, Adjusted R-squared: 0.5663, p-value: 2.2e-16",
-                                                    "n=3, Adjusted R-squared: 0.7893, p-value: 0.2105"),
+legend("bottomright", title = "Regression lines", c("n=502, Adjusted R-squared: 0.5812, p-value: 2.2e-16",
+                                                    "n=7, Adjusted R-squared: 0.5935, p-value: 0.0261",
+                                                    "n=155, Adjusted R-squared: 0.3641, p-value: 2.2e-16",
+                                                    "n=336, Adjusted R-squared: 0.7080, p-value: 2.2e-16",
+                                                    "n=3, Adjusted R-squared: 0.9982, p-value: 0.0191"),
        fill = c('black', 'blue', 'green', 'orange', 'red'), cex = 0.5)
 title("Log of M by L Full Wild dataset")
 ########## Also missing data points here. need to come back to and figure out what's going wrong #####
@@ -436,7 +430,7 @@ dim(VA_age) #444 rows, 11 columns
 summary(VA_age)
 
 #convert sul values into SVL using previous regression equation
-#SVL = 0.889x + 5.1677, R2 = 0.4573
+#SVL = 1.1957x - 10.709, R2 = 0.6163
 SULconvert <- #set function for SUL to SVL conversion
   function(x) {
     1.1957693 * x - 10.7090655
@@ -462,12 +456,12 @@ shapiro.test(VA_age$svl) #significant = not normal
 VA_adults <- VA_age %>% 
   filter(age != 0 & age != 1) #exclude frogs at 0 and 1 yrs
 view(VA_adults)
-str(VA_adults) #n=262, still have all 144 individual frogs though
+str(VA_adults) #n=263, still have all  individual frogs though
 
 VA_adults2 <- VA_adults %>% #exclude 0-2 years old. technically "maturity" is reached after 2yrs
   filter(age != 2)
 view(VA_adults2)
-str(VA_adults2) #n=167 obs, still 144 frogs
+str(VA_adults2) #n=168 obs
 
 #view their distribution
 hist(VA_adults$mass)
@@ -566,7 +560,7 @@ legend("topleft", title = "Regression lines", c("n=444, Adjusted R-squared: 0.76
                                                 "n=168, Adjusted R-squared: 0.7582, p-value: 2.2e-16",
                                                 "n=75, Adjusted R-squared: 0.7657, p-value: 2.2e-16",
                                                 "n=106, Adjusted R-squared: 0.7274, p-value: 2.2e-16",
-                                                "n=95, Adjusted R-squared: 0.3368, p-value: 2.2e-16"),
+                                                "n=95, Adjusted R-squared: 0.3358, p-value: 2.2e-16"),
        fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
 title("MbyL by age at VA")
 
@@ -596,11 +590,11 @@ abline(lm(log.mass ~ log.svl, data = VA_2), col = "purple")
 summary(lm(log.mass ~ log.svl, data = VA_2))
 abline(lm(log.mass ~ log.svl, data = VA_adults2), col = "blue")
 summary(lm(log.mass ~ log.svl, data = VA_adults2))
-legend("bottomright", title = "Regression lines", c("n=444, Adjusted R-squared: 0.906, p-value: 2.2e-16", 
+legend("bottomright", title = "Regression lines", c("n=444, Adjusted R-squared: 0.9060, p-value: 2.2e-16", 
                                                     "n=168, Adjusted R-squared: 0.7699, p-value: 2.2e-16",
                                                     "n=75, Adjusted R-squared: 0.8214, p-value: 2.2e-16",
                                                     "n=106, Adjusted R-squared: 0.8183, p-value: 2.2e-16",
-                                                    "n=95, Adjusted R-squared: 0.4105, p-value: 2.2e-16"),
+                                                    "n=95, Adjusted R-squared: 0.4102, p-value: 2.2e-16"),
        fill = c('black', 'orange', 'green', 'purple', 'blue'), cex = 0.6)
 title("Log of MbyL by age at VA")
 
@@ -706,7 +700,7 @@ legend("topleft", title = "Regression lines", c("n=7, Adjusted R-squared: 0.5935
                                                 "n=15, Adjusted R-squared: 0.7345, p-value: 2.73e-05"),
        fill = c('blue', 'purple', 'green', 'orange', 'yellow', 'red'), cex = 0.5)
 title("Log of MbyL spring 2021")
-## the un-trasnformed regression is the best R-squared (higher value is best) for TZoo (though still not great)
+## the un-transformed regression is the best R-squared (higher value is best) for TZoo (though still not great)
 ## will use it for calculating TZ's bsma later on
 
 
@@ -729,16 +723,16 @@ title("Log of MbyL spring 2021")
 # calculate bsma manually (described in Pieg & Green 2009 p.1886)
 #for Wild frogs - using wild allometric growth as standard for scaling exponent
 lm(wild_SMI$log.avg_mass ~ wild_SMI$log.avg_SVL) #using log
-slope <- 2.336 #from variable above
+slope <- 2.312869 #from variable above
 cor.test(wild_SMI$log.avg_SVL, wild_SMI$log.avg_mass, method = c("pearson")) #using log again 
-pcorr <- 0.7706459 #from above (Pearson's product-moment correlation)
+pcorr <- 0.762914 #from above (Pearson's product-moment correlation)
 bsma.w <- slope / pcorr #manual calculation of bsma (scaling exponent)
-bsma.w #3.031224
+bsma.w #3.03162
 
 #calculate bsma again but this time automated using smatr() - Standardized Major Axis
 library(smatr)
 sma(wild_SMI$log.avg_mass ~ wild_SMI$log.avg_SVL) # the slope of the estimate is the bsma 
-bsma.w <- 3.031213
+bsma.w <- 3.0316258
 
 ########################################################################################
 #### Each population needs its own bsma - calcaulted based on their best regression ####
@@ -751,7 +745,7 @@ bsma.GVZ <- 3.183815
 
 #calculate Lo
 Lo <- mean(wild_SMI$avg_SVL, na.rm = TRUE)
-Lo #71.37092
+Lo #70.820
 
 Lo.GVZ <- mean(prepo.GVZ$svl_pre20, na.rm = TRUE)
 Lo.GVZ #67.71429
@@ -786,16 +780,16 @@ sma(VA_age$log.mass ~ VA_age$log.svl) #use log #the slope of the estimate is the
 VA.bsma <- 2.80075
 #check if different if just using VA adults
 sma(VA_adults2$log.mass ~ VA_adults2$log.svl)
-VA.a.bsma <- 2.51069
-#wild bsma was 3.0312
+VA.a.bsma <- 2.50028
+#wild bsma was 3.0316
 #bsma from VA is closer to this and closer to slope of 3 in general (3 supposed to be best?)
 ########################
 #calculate Lo
 Lo.VA <- mean(VA_age$svl, na.rm = TRUE)
 Lo.VA #56.4495
 Lo.VA.a <- mean(VA_adults2$svl, na.rm = TRUE)
-Lo.VA.a #69.6645322
-#wild Lo was 71.3709 - but the Lo should be arbitrary
+Lo.VA.a #69.7527
+#wild Lo was 70.820 - but the Lo should be arbitrary
 
 ########Create new SMI functions for new bsma using old Lo (from wild population)
 ScaledMassIndex.VA <- function(x, y) {
@@ -944,7 +938,7 @@ wild_SMI <- wild_SMI %>%
          log.svl = log.avg_SVL)
 view(wild_SMI)
 
-wild.move <- wild_SMI[, c(1:6, 9)]
+wild.move <- wild_SMI[, c(1:3, 5:7, 10)]
 wild.move$season <- "postbrum" 
 wild.move <- wild.move %>% 
   relocate(season, .after = EB) %>% 
@@ -979,6 +973,7 @@ dim(full_pp) #728 rows, 10 columns
 
 ###### Plot all together now! ##############################################
 ###########################################################################
+library(EnvStats) # for adding sample size
 ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   geom_boxplot(show.legend = FALSE)+
   facet_grid(~season)+
@@ -986,7 +981,8 @@ ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   theme_classic()+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text() #sample size - figure out how to put it in the actual box
 
 ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   geom_boxplot(show.legend = FALSE)+
@@ -1000,7 +996,8 @@ ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   scale_fill_manual(values = c("#FF9933", "#663300", "#CC0000", "#CC9999"))+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12))+
+  stat_n_text()
 # see difference in fall and spring SMI between wild and zoos - look for significant differences here
 
 # facet by fall or spring to show difference in EB vs other in each season (using fill)
@@ -1069,12 +1066,12 @@ mean(wildST_SMI$SMI, na.rm = TRUE) #46.19538
 ## create new dataframe combining VA and wild full datasets for SMI over time ##
 ################################################################################
 
-adults <- VA_adults2[, c('frog_id', 'pop', 'EB', 'birth_yr', 'mass', 'svl', 'log.mass', 'log.svl', 'SMI')]
+adults <- VA_adults2[, c('frog_id', 'pop', 'EB', 'birth_yr', 'age', 'mass', 'svl', 'log.mass', 'log.svl', 'SMI')]
 view(adults)
 #combine dataframes
 adult <- rbind(adults, wild_SMI)
 view(adult)
-str(adult) #670 rows, 9 columns - check: combined VA_adults2 (n=168) + wild_SMI (n=502) = GOOD
+str(adult) #670 rows, 10 columns - check: combined VA_adults2 (n=168) + wild_SMI (n=502) = GOOD
 #recalculate SMI and try SMI using VA.bsma also
 adult$SMI.w <- ScaledMassIndex.w(adult$svl, adult$mass)
 adult$SMI.VA <- ScaledMassIndex.VA(adult$svl, adult$mass)
@@ -1125,7 +1122,7 @@ ggplot(data = adult, aes(x = population, y = SMI, fill=factor(population, labels
 ggboxplot(adult, x = "EB", y = "SMI", facet.by = "population")+ #I like this graph better than the one below
   labs(x = "Status", y = "Scaled Mass Index (g)", title = "SMI by status")+
   scale_x_discrete(labels=c("0" = "egg bound", "1" = "OK"))
-## again this confirms the single year (2021) snapshot of VA SMI data - showing no signficant differences in EB vs other
+## again this confirms the single year (2021) snapshot of VA SMI data - showing no significant differences in EB vs other
 
 ###############################################################
 ####### look at (fall) mass changes with age in TZ and VA
@@ -1412,7 +1409,7 @@ qqnorm(full_21$SMI) #looking for straight line
 shapiro.test(subset(full_21, population == "GVZ")$SMI) # p-value: 2.918e-05
 shapiro.test(subset(full_21, population == "TZ")$SMI) # p-value: 0.7690
 shapiro.test(subset(full_21, population == "VA")$SMI) # p-value: 0.00131
-shapiro.test(subset(full_21, population == "wild")$SMI) # p-value: 0.5215
+shapiro.test(subset(full_21, population == "wild")$SMI) # p-value: 0.5217
 # TZ and wild are normal (p > 0.05) but GVZ and VA are not.
 # TZ n=9, wild n=45, GVZ n=41, VA n=15
 # TZ may have come out as normal just because of very small sample size 
@@ -1425,7 +1422,7 @@ qqnorm(full_21$log.SMI) #better but still not great
 shapiro.test(subset(full_21, population == "GVZ")$log.SMI) # p-value: 0.001568
 shapiro.test(subset(full_21, population == "TZ")$log.SMI) # p-value: 0.942
 shapiro.test(subset(full_21, population == "VA")$log.SMI) # p-value: 0.0185
-shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
+shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2525
 ###  GVZoo and VA are still not normal - but much closer than they were. 
 # GVZoo has highest sample size of other zoos
 # Will still use log transformed data - with higher sample size GVZoo can be considered normal ???
@@ -1437,7 +1434,7 @@ shapiro.test(subset(full_21, population == "wild")$log.SMI) # p-value: 0.2524
 
 plot(log.SMI~population, data = full_21)
 bartlett.test(log.SMI~population, data = full_21)
-# p-value: 0.01033 - barely reject the null hypothesis
+# p-value: 0.01035 - barely reject the null hypothesis
 # the variance is not homogenous so we cannot proceed to ANOVA
 # Alternative tests are Welch-ANOVA or Kruskal-Wallis
 # Kruskal-Wallis does not require normality or homoscedasticity of variances
@@ -1446,7 +1443,7 @@ bartlett.test(log.SMI~population, data = full_21)
 #####################################################################################################
 # Kruskal-Wallis
 kruskal.test(SMI~population, data = full_21)
-# chi-squared = 54.5109, p-value = 8.730576e-12
+# chi-squared = 54.8578, p-value = 7.3628e-12
 # p < 0.05 so we reject the null hypotheses of all mean SMI being equal between populations
 # but we still do not know WHICH population means differ - just know at least one is different
 
@@ -1491,16 +1488,16 @@ hist(full_21$SMI) #long right tail
 qqnorm(full_21$SMI) #quite sloped
 
 #Shapiro Wilks test: null hypothesis = variance of data is normally distributed
-shapiro.test(subset(full_21, pop == "CH")$SMI) # p-value: 0.1877 (n=7)
-shapiro.test(subset(full_21, pop == "MS")$SMI) # p-value: 0.9052 (n=25)
-shapiro.test(subset(full_21, pop == "MV")$SMI) # p-value: 0.07682 (n=13)
+shapiro.test(subset(full_21, pop == "CH")$SMI) # p-value: 0.1874 (n=7)
+shapiro.test(subset(full_21, pop == "MS")$SMI) # p-value: 0.9055 (n=25)
+shapiro.test(subset(full_21, pop == "MV")$SMI) # p-value: 0.07678 (n=13)
 shapiro.test(subset(full_21, pop == "GVZ")$SMI) # p-value: 2.918e-05 (n=41)
 shapiro.test(subset(full_21, pop == "TZ")$SMI) # p-value: 0.769 (n=9)
 shapiro.test(subset(full_21, pop == "VA")$SMI) # p-value: 0.001311 (n=15)
 ## GVZ and VA are not normal - others are.
 # try with transformed data
-shapiro.test(subset(full_21, pop == "CH")$log.SMI) # p-value: 0.1226
-shapiro.test(subset(full_21, pop == "MS")$log.SMI) # p-value: 0.7896
+shapiro.test(subset(full_21, pop == "CH")$log.SMI) # p-value: 0.1224
+shapiro.test(subset(full_21, pop == "MS")$log.SMI) # p-value: 0.78999
 shapiro.test(subset(full_21, pop == "MV")$log.SMI) # p-value: 0.4164
 shapiro.test(subset(full_21, pop == "GVZ")$log.SMI) # p-value: 0.001568
 shapiro.test(subset(full_21, pop == "TZ")$log.SMI) # p-value: 0.942
@@ -1513,25 +1510,26 @@ bartlett.test(log.SMI~pop, data = full_21)
 ## p-value = 0.00102 means reject the null so variance is not homogenous. Cannot use ANOVA
 
 kruskal.test(SMI~pop, data = full_21)
-# chi-squared = 58.768, p-value = 2.1833e-11 (reject the null - mean SMI are not equal)
+# chi-squared = 59.0722, p-value = 1.8897e-11 (reject the null - mean SMI are not equal)
 
 # Post hoc: Dunn Test 
 dunnTest(SMI~pop, data = full_21, method = "holm")
 # specifically interested in significant differences between wild populations (CH, MS, MV)
-## CH-MS not significant (p: 0.982), CH-MV not significant (p: 1.00), MS-MV not significant (p: 0.307)
+## CH-MS not significant (p: 0.986), CH-MV not significant (p: 1.00), MS-MV not significant (p: 0.315)
 ## interestingly we also see few sig. diffs between wild pops and GVZ and TZ. 
 ### is this different when using full (2012-2022) wild dataset - compared to just 2021 captures? 
 ggbetweenstats(
   data = full_21,
   x = pop,
   y = SMI,
-  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  type = "nonparametric", # Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
   pairwise.display = "significant",
   centrality.plotting = FALSE,
   bf.message = FALSE
 )
+
 
 ######## Case 2b: look at SMI ~ pop for full wild dataset (2012-2022) #######
 ############ use wild.move dataframe to compare only wild pops  #############
@@ -1541,29 +1539,26 @@ qqnorm(wild.move$SMI) # looks pretty good actually
 wild.move$pop <- as.factor(wild.move$pop)
 summary(wild.move$pop)
 
-shapiro.test(subset(wild.move, pop == "CH")$SMI) # p-value: 0.06311 (n=7)
-shapiro.test(subset(wild.move, pop == "MS")$SMI) # p-value: 0.08684 (n=155)
+shapiro.test(subset(wild.move, pop == "CH")$SMI) # p-value: 0.1874 (n=7)
+shapiro.test(subset(wild.move, pop == "MS")$SMI) # p-value: 0.01266 (n=161)
 shapiro.test(subset(wild.move, pop == "MT")$SMI) # insufficient sample size (n=1)
-shapiro.test(subset(wild.move, pop == "MV")$SMI) # p-value: 7.366e-09 (n=336)
-shapiro.test(subset(wild.move, pop == "ST")$SMI) # p-value: 0.05143 (n=3)
-## everyone but MV are just barely normal - but MV has largest sample size so hard to say how accurate 
+shapiro.test(subset(wild.move, pop == "MV")$SMI) # p-value: 5.452e-12 (n=330)
+shapiro.test(subset(wild.move, pop == "ST")$SMI) # p-value: 0.3217 (n=3)
+## MV and MS are not normal, and they have largest sample size 
 # try with transformed data
 wild.move$log.SMI <- log(wild.move$SMI)
-shapiro.test(subset(wild.move, pop == "CH")$log.SMI) # p-value: 0.2639
-shapiro.test(subset(wild.move, pop == "MS")$log.SMI) # p-value: 0.2468
-shapiro.test(subset(wild.move, pop == "MV")$log.SMI) # p-value: 0.001562 ### this is much closer to normal
-shapiro.test(subset(wild.move, pop == "ST")$log.SMI) # p-value: 0.04512 ### this is actually worse ??
+shapiro.test(subset(wild.move, pop == "CH")$log.SMI) # p-value: 0.1224
+shapiro.test(subset(wild.move, pop == "MS")$log.SMI) # p-value: 0.5132 ## now normal
+shapiro.test(subset(wild.move, pop == "MV")$log.SMI) # p-value: 5.993e-05 ### still not normal
+shapiro.test(subset(wild.move, pop == "ST")$log.SMI) # p-value: 0.29422 ### this is actually worse ??
 ## Bartlett test
 plot(log.SMI~pop, data = wild.move) # quite a few potential outliers in MS and MV especially - look into this
 wild.noMT <- wild.move %>% 
   filter(pop != "MT")
 bartlett.test(log.SMI~pop, data = wild.noMT) 
-## p-value = 0.2967 means ACCEPT the null, so variance is homogenous. Proceed to ANOVA
-
-# One-way ANOVA using aov 
-aov_wild <- aov(log.SMI~pop, data = wild.noMT)
-summary(aov_wild)
-# F = 1.776, df = 3, p-value = 0.151
+## p-value = 2.4011e-09 variance is not homogenous. Kruskal-Wallis needed
+kruskal.test(log.SMI~pop, data = wild.noMT)
+# chi-squared = 6.1874, p-value = 0.1028
 # Interpretation: p-value is > 0.05 we accept the null hypothesis
 ##### There are NO significant differences in SMI mean between our wild populations ###
 ########## Interesting contrast to using only 2021 data for wild pops - where we saw sig differences ########
@@ -1590,7 +1585,7 @@ shapiro.test(subset(full_f, population == "VA")$SMI) # p-value: 6.156e-05 (n=90)
 shapiro.test(subset(full_s, population == "GVZ")$SMI) # p-value: 4.499e-05 (n=42) (not normal)
 shapiro.test(subset(full_s, population == "VA")$SMI) # p-value: 0.00266 (n=45) (not normal)
 shapiro.test(subset(full_s, population == "TZ")$SMI) # p-value: 0.769 (n=9) (normal)
-shapiro.test(subset(full_s, population == "wild")$SMI) # p-value: 2.533e-10 (n=502) (not normal)
+shapiro.test(subset(full_s, population == "wild")$SMI) # p-value: 5.782e-10 (n=502) (not normal)
 # try transformed data
 shapiro.test(subset(full_f, population == "GVZ")$log.SMI) # p-value: 0.2964
 shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.0234
@@ -1598,22 +1593,22 @@ shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.0234
 shapiro.test(subset(full_s, population == "GVZ")$log.SMI) # p-value: 0.002292
 shapiro.test(subset(full_s, population == "VA")$log.SMI) # p-value: 0.0234
 shapiro.test(subset(full_s, population == "TZ")$log.SMI) # p-value: 0.942
-shapiro.test(subset(full_s, population == "wild")$log.SMI) # p-value: 0.0007522
+shapiro.test(subset(full_s, population == "wild")$log.SMI) # p-value: 0.00363
 ## closer but still not normal for most
 
 plot(log.SMI~population, data = full_f) #a few potential outliers but not bad
 plot(log.SMI~population, data = full_s) # a couple outliers in VA but less sample size here
 bartlett.test(log.SMI~population, data = full_f) #p-value: 0.91111 (= homogenous variance)
-bartlett.test(log.SMI~population, data = full_s) #p-value: 0.5000 (= homogenous)
+bartlett.test(log.SMI~population, data = full_s) #p-value: 0.4789 (= homogenous)
 ## even though variance was homogenous, most of the data was not normal so let's stick with KW test
 kruskal.test(SMI~population, data = full_f)
-# chi-squared = 0.0352, p-value = 0.8511 so we accept the null
+# chi-squared = 0.0755, p-value = 0.7835 so we accept the null
 kruskal.test(SMI~population, data = full_s)
-# chi-squared = 65.348, p-value = 4.226e-14 so we reject the null
+# chi-squared = 65.301, p-value = 4.325e-14 so we reject the null
 
 ##compare with anova
 aov.21f <- aov(SMI~population, data = full_f) 
-summary(aov.21f)# p-value: 0.8978
+summary(aov.21f)# p-value: 0.8321
 aov.21s <- aov(SMI~population, data = full_s)
 summary(aov.21s) # p-value: 2.22e-16
 ######### accept the null for fall - meaning there are no significant differences
@@ -1628,11 +1623,10 @@ ggbetweenstats(
   data = full_s,
   x = population,
   y = SMI,
-  type = "nonparametric", # ANOVA or Kruskal-Wallis
+  type = "nonparametric", #  Kruskal-Wallis
   plot.type = "box",
   pairwise.comparisons = TRUE,
-  pairwise.display = "significant",
-  centrality.plotting = FALSE,
+  pairwise.display = "significant", #not including centrality plotting means we see the n=, but also medians
   bf.message = FALSE
 )
 
@@ -1651,16 +1645,16 @@ EB21_f$log.SMI <- log(EB21_f$SMI)
 EB21_s$log.SMI <- log(EB21_s$SMI)
 
 #Bartlett by EB status (could use an F test for homogeneity... is this better for only 2 samples?)
-bartlett.test(SMI~EB, data = EB21_f) #p = 0.5346 (homogenous)
-bartlett.test(SMI~EB, data = EB21_s) #p = 0.5867 (homogenous)
-bartlett.test(SMI~pop, data = EB21_f) #p = 0.7781 (homogenous)
-bartlett.test(SMI~pop, data = EB21_s) #p = 0.01746 (NOT homogenous...)
-### spring variances are not homogenous amongst population groups... shouldn't really use ANOVA for this? 
+bartlett.test(SMI~EB, data = EB21_f) #p = 0.5192 (homogenous)
+bartlett.test(SMI~EB, data = EB21_s) #p = 0.5911 (homogenous)
+bartlett.test(SMI~pop, data = EB21_f) #p = 0.7579 (homogenous)
+bartlett.test(SMI~pop, data = EB21_s) #p = 0.0168 (NOT homogenous...)
+### spring variances are not homogenous among population groups... shouldn't really use ANOVA for this? 
 
 one.way.f <- aov(SMI~EB, data = EB21_f)
-summary(one.way.f) #p = 0.709 ### accept the null. not significantly different
+summary(one.way.f) #p = 0.727 ### accept the null. not significantly different
 one.way.s <- aov(SMI~EB, data = EB21_s)
-summary(one.way.s) #p= 0.136 ### accept the null. not significantly different
+summary(one.way.s) #p= 0.135 ### accept the null. not significantly different
 
 ## try one-way using pop as independent
 one.f.pop <- aov(SMI ~ pop, data = EB21_f)
@@ -1705,7 +1699,7 @@ model.names <- c("one way EB", "one way pop", "two way", "interaction")
 aictab(model.set.s, modnames = model.names)
 # best fit model: one-way pop
 summary(one.s.pop)
-# p-value: 2.2317e-10 (***) no need for post-hoc 
+# p-value: 1.923e-10 (***) no need for post-hoc 
 
 #################################### Future thought: look at each pop and use season as independent variable #
 
@@ -1755,7 +1749,7 @@ view(EB_outliers) # 8 "extreme outliers" - mostly not egg bound (6:2)
 bartlett.test(SMI ~ age, data = VA_age) #p-value: 3.5903e-14
 bartlett.test(SMI ~ EB, data = VA_age) #p-value: 3.3311e-08
 ### variance is not equal. So we cannot use ANOVA. Friedman test is the nonparametric alternative
-## but our blocks are incomplete... use Skillings-Mack test insead
+## but our blocks are incomplete... use Skillings-Mack test instead
 # for un-balanced two-way block designs
 # each block must get at least two treatments
 # H0: treatments are equal
@@ -1766,5 +1760,199 @@ bartlett.test(SMI ~ EB, data = VA_age) #p-value: 3.3311e-08
 #   Ski.Mack(SMI, groups=EB, blocks=frog_id) 
 #########################################################
 # cannot figure above homie out. Not a lot of references on this. 
-#### Alternative plan: subset dataframe to a few frogs with the greatest number of repeated measures - create a complete block
+#### Alternative plan: subset dataframe to a few frogs with the greatest number of repeated measures
+##################### create a complete block
+#########################################################
+# data is not super complete... could have a decent subset for ages 1-3, but older ages have few and incomplete
 
+view(VA_byage_wide)
+block_13 <- VA_byage_wide %>%
+  select(1:8, 11:16) %>% 
+  filter_at(vars(mass1, sul1, mass2, sul2, mass3, sul3), all_vars(!is.na(.)))
+view(block_13)
+# all_vars ages 1-3 leaves n=43
+
+# try with different age brackets
+block_24 <- VA_byage_wide %>%
+  select(1:8, 13:18) %>% 
+  filter_at(vars(mass2, sul2, mass3, sul3, mass4, sul4), all_vars(!is.na(.)))
+view(block_24)
+# all_vars ages 1-4 leaves n=9
+# all_vars ages 2-4 leaves n=14
+block_67 <- VA_byage_wide %>%
+  select(1:8, 21:24) %>% 
+  filter_at(vars(mass6, sul6, mass7, sul7), all_vars(!is.na(.)))
+view(block_67)
+# ages 6-7 leaves n=7
+
+#transform these datasets - the best blocks 
+block_13 <- melt(setDT(block_13), id=1:8, measure=patterns("^mass", "^sul"),
+               value.name=c("mass", "sul"), variable.name="age", na.rm = TRUE) %>% 
+  relocate(age, .after = EB)  
+view(block_13)
+block_13$frog_id <- as.factor(block_13$frog_id) #factor 43 levels (individual frogs)
+block_13$EB <- as.factor(block_13$EB) #as factor. Two levels: 0=EB 1=not (OK)
+block_13$pop <- as.factor(block_13$pop) #factor with 1 level (all from VA)
+block_13$source <- as.factor(block_13$source) #factor with 10 levels
+block_13$birth_yr <- as.factor(block_13$birth_yr) #5 levels
+str(block_13)
+
+block_24 <- melt(setDT(block_24), id=1:8, measure=patterns("^mass", "^sul"),
+                   value.name=c("mass", "sul"), variable.name="ageof", na.rm = TRUE)
+block_24 <- block_24 %>% 
+  mutate(age = case_when(ageof == "1" ~ "2", ageof == "2" ~ "3", ageof == "3" ~ "4")) %>%
+  relocate(age, .after = EB)
+view(block_24)
+block_24$ageof <- NULL #no longer need this column
+block_24$frog_id <- as.factor(block_24$frog_id) #factor 14 levels (individual frogs)
+block_24$EB <- as.factor(block_24$EB) #as factor. Two levels: 0=EB 1=not (OK)
+block_24$pop <- as.factor(block_24$pop) #factor with 1 level (all from VA)
+block_24$source <- as.factor(block_24$source) #factor with 7 levels
+block_24$birth_yr <- as.factor(block_24$birth_yr) #4 levels
+str(block_24)
+
+block_67 <- melt(setDT(block_67), id=1:8, measure=patterns("^mass", "^sul"),
+                   value.name=c("mass", "sul"), variable.name="ageof", na.rm = TRUE)
+block_67 <- block_67 %>% 
+  mutate(age = case_when(ageof == "1" ~ "6", ageof == "2" ~ "7")) %>%
+  relocate(age, .after = EB)
+view(block_67)
+block_67$ageof <- NULL 
+block_67$frog_id <- as.factor(block_67$frog_id) #factor 43 levels (individual frogs)
+block_67$EB <- as.factor(block_67$EB) #as factor. Two levels: 0=EB 1=not (OK)
+block_67$pop <- as.factor(block_67$pop) #factor with 1 level (all from VA)
+block_67$source <- as.factor(block_67$source) #factor with 10 levels
+block_67$birth_yr <- as.factor(block_67$birth_yr) #5 levels
+str(block_67)
+
+##### need to convert sul to svl, and calculate SMI for each block
+block_13$svl <- SULconvert(block_13$sul)
+block_24$svl <- SULconvert(block_24$sul)
+block_67$svl <- SULconvert(block_67$sul)
+block_13$SMI <- ScaledMassIndex.VA(block_13$svl, block_13$mass)
+block_24$SMI <- ScaledMassIndex.VA(block_24$svl, block_24$mass)
+block_67$SMI <- ScaledMassIndex.VA(block_67$svl, block_67$mass)
+
+######### Remember, we are blocking by age but we are actually interested in EB vs OK ############
+# let's take a look at these data sets now
+hist(block_13$SMI) #looks normal! 
+hist(block_24$SMI) #right tail
+hist(block_67$SMI) #bimodal
+ggqqplot(block_13$SMI)
+ggqqplot(block_24$SMI)
+ggqqplot(block_67$SMI) #all three of these look quite good
+
+# test normality
+shapiro.test(block_13$SMI) # p-value: 0.01024 (not normal) - surprising because this looked normal
+shapiro.test(block_24$SMI) # p-value: 0.000131 (not normal)
+shapiro.test(block_67$SMI) # p-value: 0.0597 (barely normal)
+shapiro.test(subset(block_13, EB = "0")$SMI) #subset by EB...
+shapiro.test(subset(block_13, EB = "1")$SMI) #both p = 0.01 = not normal
+
+####################################################################################
+#### data mostly not normal, mostly not homogenous. not repeated measures but between-subject factors?
+#### Mixed ANOVA? 
+####################################################################################
+#### don't think I can do the below kruskal wallis... only two groups. and subjects are not independent.
+#### FIND correct statistical test #####################################################################
+#homogeneity 
+plot(SMI ~ EB, data = block_13)
+bartlett.test(SMI ~ EB, data = block_13) # p-value: 0.0279 - not homogenous
+plot(SMI ~ EB, data = block_24)
+bartlett.test(SMI ~ EB, block_24) # p-value: 0.02811 - not homogenous 
+plot(SMI ~ EB, data = block_67)
+bartlett.test(SMI ~ EB, block_67) # p-value: 0.6669 - variance is homogenous
+# let's do Kruskal-Wallis to be consistent across
+kruskal.test(SMI ~ EB, data = block_13) #chi-squared: 1.6400, p-value: 0.2003
+kruskal.test(SMI ~ EB, data = block_24) #chi-squared: 0.0284, p-value: 0.8661
+kruskal.test(SMI ~ EB, data = block_67) #chi-squared: 6.6667, p-value: 0.0098
+### we ACCEPT the null (no sig diffs) for block_13 and block_24 but NOT for block_67
+dunnTest(SMI ~ EB, data = block_67)
+
+#########################################################################
+# select for frogs with most years of data
+# 2009 GRP2-02, 2011 CBGHA#7-03, 2012 WCEM09-02, 2014 WCEM02-02 (maybe) - the oldest frogs ? lived the longest
+#########################################################################
+#########################################################################
+
+
+
+#########################################################################
+## Quick regression by age for wild frogs - only have age for a few #####
+#########################################################################
+wild_age <- read.csv("wild_withage.csv", header = TRUE)
+view(wild_age)
+wild_age$SMI <- ScaledMassIndex.w(wild_age$svl, wild_age$mass)
+str(wild_age)
+## trying to predict age based on other measurements that we have
+plot(wild_age$mass, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Mass (g)", ylab = "Age (yrs)")
+abline(lm(age ~ mass, data = wild_age)) 
+lm(age~mass, data = wild_age)
+summary(lm(age~mass, data = wild_age)) #R-squared 0.4725, p-value: 0.0168
+
+#try transformation
+wild_age$log.mass <- log(wild_age$mass)
+wild_age$log.svl <- log(wild_age$svl)
+wild_age$log.shank <- log(wild_age$shank)
+wild_age$log.SMI <- log(wild_age$SMI)
+wild_age$log.age <- log(wild_age$age)
+
+plot(wild_age$log.mass, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Log Mass (g)", ylab = "Age (yrs)")
+abline(lm(age ~ log.mass, data = wild_age)) 
+lm(age~log.mass, data = wild_age)
+summary(lm(age~log.mass, data = wild_age)) #R-squared: 0.3892, p-value: 0.0319
+
+plot(wild_age$svl, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Snout-vent length (mm)", ylab = "Age (yrs)")
+abline(lm(age~svl, data = wild_age))
+lm(age~svl, data = wild_age) # looks quite good
+summary(lm(age~svl, data = wild_age)) # R-squared: 0.8156, p-value 0.0002117
+#try transformation
+plot(wild_age$log.svl, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Log Snout-vent length (mm)", ylab = "Age (yrs)")
+abline(lm(age~log.svl, data = wild_age))
+lm(age~log.svl, data = wild_age) # looks quite good
+summary(lm(age~log.svl, data = wild_age)) #R-squared is better without transformation
+
+plot(wild_age$log.svl, wild_age$log.age, pch = 16, cex = 1.3,
+     xlab = "Log Snout-vent length (mm)", ylab = "Age (yrs)")
+abline(lm(log.age~log.svl, data = wild_age))
+lm(log.age~log.svl, data = wild_age) 
+summary(lm(log.age~log.svl, data = wild_age)) ## R-squared is only getting lower
+
+plot(wild_age$shank, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Shank length (mm)", ylab = "Age (yrs)")
+abline(lm(age~shank, data = wild_age))
+lm(age~shank, data = wild_age)
+summary(lm(age~shank, data = wild_age)) #R-squared: 0.3283, p-value: 0.0487
+
+plot(wild_age$SMI, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Scaled Mass Index (g)", ylab = "Age (yrs)")
+abline(lm(age ~ SMI, data = wild_age)) #see opposite relationship to all other regressions
+lm(age ~ SMI, data = wild_age)
+summary(lm(age ~ SMI, data = wild_age)) # R-squared: 0.7554, p-value: 0.000672
+
+#### The highest R-squared thus far is from svl~age, (0.8156) ####
+######## The equation of this line is: ###########################
+#######################  (age)  y = 0.2049x - 10.922 #############
+plot(wild_age$svl, wild_age$age, pch = 16, cex = 1.3,
+     xlab = "Snout-vent length (mm)", ylab = "Age (yrs)")
+abline(lm(age~svl, data = wild_age))
+summary(lm(age~svl, data = wild_age))
+legend("topleft", title = "Regression line", c("n=10, Adjusted R-squared: 0.8156, p-value: 0.00021"),
+       fill = 'black', cex = 0.8)
+legend("bottomright", title = "Equation of line", c("y = 0.205x - 10.922"),
+       fill = 'blue', cex = 0.9)
+title("Age of VIE-marked wild frogs")
+
+# use this equation to predict age of wild frogs based on their measured SVL
+AGE <- 
+  function(x) {
+    0.20487957 * x - 10.92177008
+  }
+
+wild_SMI$pred_age <- AGE(wild_SMI$svl) #temporary problem: replaced old age column with predicted age
+view(wild_SMI)
+plot(pred_age~svl, wild_SMI)
