@@ -12,7 +12,7 @@ library(EnvStats)
 theme_set(theme_bw())
 
 VA_data <- read.csv("OSF_VA22females.csv", header = TRUE)
-head(VA_data)
+head(VA_data) #### eventually swap out "suc" column names for "ext" for extended instead of successful
 view(VA_data)
 dim(VA_data) #35 rows, 25 columns
 VA_data$grade_01 <- factor(VA_data$grade_01, levels = c("0", "1", "2", "3"), ordered = TRUE)
@@ -1031,27 +1031,26 @@ summary(interaction_4) #grade_04 and treatment both explain significant amount o
 
 ################################################################################
 ### Let's look at amplexus behaviours ~ treatment for significance #############
-######### Case 1: to_first ~ treatment 
-hist(VA_data$to_first) #looks pretty bimodal
-qqnorm(VA_data$to_first) #not straight
-shapiro.test(subset(VA_data, treatment == "C")$to_first) #p-value: 0.02249 (not normal)
-shapiro.test(subset(VA_data, treatment == "H")$to_first) #p-value: 0.2719 (not normal)
-shapiro.test(subset(VA_data, treatment == "V")$to_first) #p-value: 0.1582 (not normal)
-shapiro.test(subset(VA_data, treatment == "HV")$to_first) #p-value: 0.09262 (not normal)
-shapiro.test(subset(VA_data, treatment == "PHV")$to_first) #cannot calculate (all values same)
+######### Case 1: to_first ~ treatment #### omit PHV since all -1 values
+hist(first_noPHV$to_first) #looks pretty bimodal
+qqnorm(first_noPHV$to_first) #not straight
+shapiro.test(subset(first_noPHV, treatment == "C")$to_first) #p-value: 0.02249 (not normal)
+shapiro.test(subset(first_noPHV, treatment == "H")$to_first) #p-value: 0.2719 (not normal)
+shapiro.test(subset(first_noPHV, treatment == "V")$to_first) #p-value: 0.1582 (not normal)
+shapiro.test(subset(first_noPHV, treatment == "HV")$to_first) #p-value: 0.09262 (not normal)
 #### could I do a transformation? couldn't get it to work previously
-plot(to_first~treatment, data = VA_data) #see quite a few potentially significant outliers. keep because small sample sizes
-bartlett.test(to_first~treatment, data = VA_data)
-# p-value: 2.2e-16 = reject the null hypothesis so variance is not homogenous. Use Kruskal-Wallis test
-kruskal.test(to_first~treatment, data = VA_data)
-# chi-squared = 19.603, df = 4, p-value = 0.0005981
+plot(to_first~treatment, data = first_noPHV) #see quite a few potentially significant outliers. keep because small sample sizes
+bartlett.test(to_first~treatment, data = first_noPHV)
+# p-value: 0.1149 = accept the null hypothesis; variance is homogenous but not normal so use Kruskal-Wallis test
+kruskal.test(to_first~treatment, data = first_noPHV)
+# chi-squared = 9.2435, df = 4, p-value = 0.02622
 # p < 0.05 so we reject null of all means being equal. need to do post-hoc test (Dunn)
-dunnTest(to_first~treatment, data = VA_data, method = "holm")
-## see only  slightly significant values (p < 0.05) for H-PHV, HV-PHV, and PHV-V
-## so really, PHV differs significantly from all treatments except Control
+dunnTest(to_first~treatment, data = first_noPHV, method = "holm")
+## C-H and C-HV are right on p = 0.05 
+# this is not really significant then
 
 ggbetweenstats(
-  data = VA_data,
+  data = first_noPHV,
   x = treatment,
   y = to_first,
   ylab = "Time (hrs)",
@@ -1187,3 +1186,150 @@ ggplot(VA_data, aes(x = status, fill = prev_breed))+
 ######## may vary  by individual frog or age or treatment but.
 ######## BUT, if impacted, VA grades should all be consistently higher or lower than GVZoo grades. 
 
+GVZ_us <- read.csv("GVZ_ultrasoundgrades.csv", header = TRUE)
+view(GVZ_us)
+GVZ_us$treatment <- "C"
+
+# need to pull out VA id data and grades 01 and 02 (do we want grades 03-04 too? could add later)
+VA_us <- VA_data[, c(1, 3, 5, 11, 22, 24:25)]
+VA_us$pop <- "VA"
+VA_us <- VA_us %>% 
+  rename(mass = mass_spr) %>% 
+  relocate(pop, .after = frog_id)
+view(VA_us)
+str(VA_us)
+str(GVZ_us)
+GVZ_us$frog_id <- as.factor(GVZ_us$frog_id)
+GVZ_us$treatment <- as.factor(GVZ_us$treatment)
+GVZ_us$status <- as.factor(GVZ_us$status)
+GVZ_us$grade_01 <- factor(GVZ_us$grade_01, levels = c("0", "1", "2", "3"), ordered = TRUE)
+GVZ_us$grade_02 <- factor(GVZ_us$grade_02, levels = c("0", "1", "2", "3"), ordered = TRUE)
+
+u.s <- rbind(VA_us, GVZ_us)
+view(u.s)
+u.s$pop <- as.factor(u.s$pop)
+summary(u.s)
+#### GVZ (n=40) and VA (n=35)
+
+## compare distributions of grades - overall distribution: GVZ vs VA
+us01 <- ggplot(u.s, aes(x = grade_01, fill = grade_01))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~pop)+
+  labs(x = "Follicular Grade", title = "day 01 ultrasound")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+## seeing a lot more grade 3's at GVZ, and slightly higher grades 1 and 2 counts at VA
+u.s.na <- u.s %>% 
+  filter(grade_02 != "DE" & !is.na(grade_02)) #subset out the DE and NAs from grade_01
+
+us02 <- ggplot(u.s.na, aes(x = grade_02, fill = grade_02))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~pop)+
+  labs(x = "Follicular Grade", title = "second ultrasound")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+#### GVZoo frogs have basically all laid already - VA frogs are only just reaching grades 2 and 3
+ggarrange(us01, us02)
+
+#### Look at just VA's Control treatment against the GVZ grades
+ggplot(data = subset(u.s, treatment == "C"), aes(x = grade_01, fill = grade_01))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~pop)+
+  labs(x = "Follicular Grade", title = "day 01 ultrasound")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12)) 
+#### we see spread on both sides. still fewer grade 3's in VA but not unusual to have all grades
+
+## what if we organize VA grades differently to compare to GVZ
+us.VA <- ggplot(VA_us, aes(x = grade_01, fill = grade_01))+
+  geom_bar(alpha = 0.9)+
+  facet_grid(~treatment)+
+  labs(x = "Follicular Grade", title = "day 01 ultrasound at VA")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+us.GVZ <-  ggplot(GVZ_us, aes(x = grade_01, fill = grade_01))+
+  geom_bar(alpha = 0.9)+
+  labs(x = "Follicular Grade", title = "day 01 ultrasound at GVZ")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+ggarrange(us.GVZ, us.VA)
+#### Control treatment at VA is only one with all grades represented - similar to GVZ
+#### but actually, can the Control group work as a control at all? they were under the same
+#### environmental conditions as all the other treatments... they just had less male exposure
+
+us.VA3 <- ggplot(VA_data, aes(x = grade_03, fill = grade_03))+
+  geom_bar(alpha = 0.9)+
+  labs(x = "Follicular Grade", title = "April 13 ultrasound at VA")+
+  theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
+  theme(legend.position = "none")+
+  theme(text = element_text(family = "Arial"))+
+  theme(text = element_text(size = 12))
+
+ggarrange(us.GVZ, us.VA3)
+
+##############################################
+## Let's convert u.s to long form so we can look at grades over "time" 
+##############################################
+## make new VA long including all 4 ultrasound grade days
+VA_long <- VA_data[, c(1, 3, 5, 11, 22, 24:27)]
+VA_long$pop <- "VA"
+VA_long <- VA_long %>% 
+  rename(mass = mass_spr) %>% 
+  relocate(pop, .after = frog_id) 
+
+VA_long <- melt(setDT(VA_long), id = 1:6, measure=patterns("^grade_"),
+                 value.name = "grade", variable.name = "from", na.rm = TRUE)
+#now 140 entries (grades01-04)
+VA_long <- VA_long %>% 
+  mutate(ultrasound = case_when(from == "grade_01" ~ "first",
+                                from == "grade_02" ~ "second",
+                                from == "grade_03" ~ "third",
+                                from == "grade_04" ~ "fourth")) %>% 
+  relocate(ultrasound, .after = status) %>% 
+  mutate(date = case_when(from == "grade_01" ~ "March 7, 2022",
+                          from == "grade_02" ~ "March 25, 2022",
+                          from == "grade_03" ~ "April 13, 2022",
+                          from == "grade_04" ~ "April 30, 2022")) %>% 
+  relocate(ultrasound, .after = grade)
+VA_long$from <- NULL
+view(VA_long)
+
+### make GVZ long to rbind
+GVZ_us <- GVZ_us %>% 
+  relocate(treatment, .after = pop)
+GVZ_long <- melt(setDT(GVZ_us), id = 1:6, measure=patterns("^grade_"),
+                 value.name = "grade", variable.name = "from", na.rm = TRUE)
+GVZ_long <- GVZ_long %>% 
+  mutate(ultrasound = case_when(from == "grade_01" ~ "first",
+                                from == "grade_02" ~ "second")) %>% 
+  relocate(ultrasound, .after = status) %>% 
+  mutate(date = case_when(from == "grade_01" ~ "March 2, 2022",
+                          from == "grade_02" ~ "March 29, 2022")) %>% 
+  relocate(ultrasound, .after = grade)
+GVZ_long$from <- NULL
+view(GVZ_long)
+us_long <- rbind(GVZ_long, VA_long)
+us_long$date <- as.Date(us_long$date, format =  "%m/%d/%Y") #set date format
+####################
+### Can't get date format to work properly... ####
+view(us_long)
+summary(us_long)
+
+
+############################################################################
