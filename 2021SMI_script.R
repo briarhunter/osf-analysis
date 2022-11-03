@@ -979,6 +979,7 @@ ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   facet_grid(~season)+
   labs(x = "Population", y = "Scaled Mass Index (g)", title = "pre and post-brumation SMI from 2020-2021")+
   theme_classic()+
+  scale_fill_brewer(palette = "Set2")+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))+
@@ -989,11 +990,7 @@ ggplot(data = full_pp, aes(x = population, y = SMI, fill=population))+
   facet_grid(~when)+
   labs(x = "Population", y = "Scaled Mass Index (g)", title = "Seasonal SMI from 2020-2021")+
   theme_classic()+
-  theme(panel.background = element_rect(fill = "#F6F0ED"), 
-        plot.background = element_rect(fill = "#F6F0ED"), 
-        legend.background = element_rect(fill = "#F6F0ED"),
-        legend.box.background = element_rect(fill = "#F6F0ED"))+
-  scale_fill_manual(values = c("#FF9933", "#663300", "#CC0000", "#CC9999"))+
+  scale_fill_brewer(palette = "Set2")+
   theme(legend.title = element_blank())+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))+
