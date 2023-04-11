@@ -191,6 +191,7 @@ ggplot(data = VA_data, aes(x = age, y = day00_grade, colour = birth_type))+
 ############### Amplexus behaviours by ultrasound grade1 (day 00)##################
 ###################################################################################
 #using VA_noF dataframe because F group does not have measured amplexus behaviours
+tapply(VA_data$to_first, VA_data$day00_grade, summary)
 
 #####start with time to first contact
 ggplot(data = VA_noF, aes(x = day00_grade, y = to_first, fill=day00_grade))+
@@ -279,7 +280,9 @@ ggplot(VA_data, aes(x = treatment, fill = status))+
   theme_classic()+
   scale_fill_brewer(palette = "Dark2")+ ###could maybe flip colours so EB is red... or set different colours per status
   scale_x_discrete(labels=c("C" = "Control", "V" = "Visual", "H" = "Hormone",
-                            "HV" = "H + V", "PHV" = "Physical + HV", "F" = "Pourya's"))+
+                            "HV" = "H + V", "PHV" = "Physical + HV", "F" = "Pourya's"))+ 
+  scale_fill_discrete(labels = c("EB" = "egg bound", "ER" = "egg retention", "LA" = "laid eggs",
+                               "NF" = "no follicles"))+
   theme(text = element_text(family = "Arial"))+
   theme(text = element_text(size = 12))
 #### we see no frogs in the Visual treatment group became egg bound. All had egg retention but no egg binding. Hormone group had lots of egg binding
@@ -1073,8 +1076,8 @@ VA_us$pop <- "VA"
 VA_us <- VA_us %>% 
   rename(mass = mass_spr) %>% 
   relocate(pop, .after = frog_id) %>% 
-  rename(first_gr = day00_grade) %>% 
-  rename(second_gr = day18_grade)
+  rename(first_gr = day00_grade,
+         second_gr = day18_grade)
 view(VA_us)
 str(VA_us)
 str(GVZ_us)
